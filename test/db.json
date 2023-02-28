@@ -1,0 +1,702 @@
+{
+  "config": {
+    "flush_interval": 1,
+    "event_sink_endpoint": "http://localhost:3002/api/events",
+    "error_sink_endpoint": "http://localhost:3002/api/errors",
+    "keys_to_hash": [
+      "request.body",
+      "response.body"
+    ],
+    "ignored_domains": []
+  },
+  "errors": {},
+  "events": [
+    [
+      {
+        "request": {
+          "id": "50a922ae-251b-4ef1-9212-3464b38b191e",
+          "method": "POST",
+          "url": "https://sandbox.plaid.com:443/link/token/create",
+          "body": "{\"client_name\": \"Plaid Quickstart\", \"language\": \"en\", \"country_codes\": [\"US\", \"CA\"], \"user\": {\"client_user_id\": \"1677531661.212363\"}, \"products\": [\"auth\", \"transactions\"]}",
+          "headers": {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Plaid-Version": "2020-09-14",
+            "User-Agent": "Plaid Python v9.1.0",
+            "PLAID-CLIENT-ID": "5ef2da45ca4e880012173274",
+            "PLAID-SECRET": "249f479f2f0618c04623393f168bcd"
+          },
+          "path": "/link/token/create",
+          "search": "",
+          "requestedAt": "2023-02-27T13:01:01.536568"
+        },
+        "response": {
+          "body": "{\n  \"expiration\": \"2023-02-28T01:01:02Z\",\n  \"link_token\": \"link-sandbox-49f6ac57-78c2-4bca-8615-82c2c66b5725\",\n  \"request_id\": \"jTRBag412DGHMT6\"\n}",
+          "headers": {
+            "Server": "nginx",
+            "Date": "Mon, 27 Feb 2023 21:01:01 GMT",
+            "Content-Type": "application/json; charset=utf-8",
+            "Content-Length": "146",
+            "Connection": "keep-alive",
+            "plaid-version": "2020-09-14",
+            "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "X-XSS-Protection": "1; mode=block"
+          },
+          "status": 200,
+          "statusText": "OK",
+          "respondedAt": "2023-02-27T13:01:01.843624"
+        }
+      }
+    ],
+    [
+      {
+        "request": {
+          "id": "c325e3a2-1a02-4065-b2af-abc883a64e98",
+          "method": "POST",
+          "url": "https://sandbox.plaid.com:443/item/public_token/exchange",
+          "body": "{\"public_token\": \"public-sandbox-73abeb2d-024e-49fc-8f22-1649879fda64\"}",
+          "headers": {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Plaid-Version": "2020-09-14",
+            "User-Agent": "Plaid Python v9.1.0",
+            "PLAID-CLIENT-ID": "5ef2da45ca4e880012173274",
+            "PLAID-SECRET": "249f479f2f0618c04623393f168bcd"
+          },
+          "path": "/item/public_token/exchange",
+          "search": "",
+          "requestedAt": "2023-02-27T13:01:49.607281"
+        },
+        "response": {
+          "body": "{\n  \"access_token\": \"access-sandbox-1715e223-65e5-45aa-bc39-0ca0a64ec886\",\n  \"item_id\": \"9XJZwG8l7McZpnaMAneQIp1V8LkGPLFRkDzr3\",\n  \"request_id\": \"H8luLMw2jSZVDYB\"\n}",
+          "headers": {
+            "Server": "nginx",
+            "Date": "Mon, 27 Feb 2023 21:01:49 GMT",
+            "Content-Type": "application/json; charset=utf-8",
+            "Content-Length": "164",
+            "Connection": "keep-alive",
+            "plaid-version": "2020-09-14",
+            "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "X-XSS-Protection": "1; mode=block"
+          },
+          "status": 200,
+          "statusText": "OK",
+          "respondedAt": "2023-02-27T13:01:49.937301"
+        }
+      }
+    ],
+    [
+      {
+        "request": {
+          "id": "5a689901-c968-40d8-8e07-b72574151f85",
+          "method": "POST",
+          "url": "https://sandbox.plaid.com:443/auth/get",
+          "body": "{\"access_token\": \"access-sandbox-1715e223-65e5-45aa-bc39-0ca0a64ec886\"}",
+          "headers": {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Plaid-Version": "2020-09-14",
+            "User-Agent": "Plaid Python v9.1.0",
+            "PLAID-CLIENT-ID": "5ef2da45ca4e880012173274",
+            "PLAID-SECRET": "249f479f2f0618c04623393f168bcd"
+          },
+          "path": "/auth/get",
+          "search": "",
+          "requestedAt": "2023-02-27T13:01:51.613868"
+        },
+        "response": {
+          "body": "{\n  \"accounts\": [\n    {\n      \"account_id\": \"vQvkRpq1DWS3ZX4VKXyBUwAnMvPv4xcnnvRKQ\",\n      \"balances\": {\n        \"available\": 100,\n        \"current\": 110,\n        \"iso_currency_code\": \"USD\",\n        \"limit\": null,\n        \"unofficial_currency_code\": null\n      },\n      \"mask\": \"0000\",\n      \"name\": \"Plaid Checking\",\n      \"official_name\": \"Plaid Gold Standard 0% Interest Checking\",\n      \"subtype\": \"checking\",\n      \"type\": \"depository\"\n    },\n    {\n      \"account_id\": \"Rnq91R8EMyFZE65Rd6plI4anjAPAkNfXXP4qg\",\n      \"balances\": {\n        \"available\": 200,\n        \"current\": 210,\n        \"iso_currency_code\": \"USD\",\n        \"limit\": null,\n        \"unofficial_currency_code\": null\n      },\n      \"mask\": \"1111\",\n      \"name\": \"Plaid Saving\",\n      \"official_name\": \"Plaid Silver Standard 0.1% Interest Saving\",\n      \"subtype\": \"savings\",\n      \"type\": \"depository\"\n    }\n  ],\n  \"item\": {\n    \"available_products\": [\n      \"assets\",\n      \"balance\",\n      \"credit_details\",\n      \"identity\",\n      \"income\",\n      \"investments\",\n      \"liabilities\"\n    ],\n    \"billed_products\": [\n      \"auth\",\n      \"transactions\"\n    ],\n    \"consent_expiration_time\": null,\n    \"error\": null,\n    \"institution_id\": \"ins_56\",\n    \"item_id\": \"9XJZwG8l7McZpnaMAneQIp1V8LkGPLFRkDzr3\",\n    \"optional_products\": null,\n    \"products\": [\n      \"auth\",\n      \"transactions\"\n    ],\n    \"update_type\": \"background\",\n    \"webhook\": \"\"\n  },\n  \"numbers\": {\n    \"ach\": [\n      {\n        \"account\": \"1111222233330000\",\n        \"account_id\": \"vQvkRpq1DWS3ZX4VKXyBUwAnMvPv4xcnnvRKQ\",\n        \"routing\": \"011401533\",\n        \"wire_routing\": \"021000021\"\n      },\n      {\n        \"account\": \"1111222233331111\",\n        \"account_id\": \"Rnq91R8EMyFZE65Rd6plI4anjAPAkNfXXP4qg\",\n        \"routing\": \"011401533\",\n        \"wire_routing\": \"021000021\"\n      }\n    ],\n    \"bacs\": [],\n    \"eft\": [],\n    \"international\": []\n  },\n  \"request_id\": \"zjutGspUTSynwrS\"\n}",
+          "headers": {
+            "Server": "nginx",
+            "Date": "Mon, 27 Feb 2023 21:01:51 GMT",
+            "Content-Type": "application/json; charset=utf-8",
+            "Content-Length": "1921",
+            "Connection": "keep-alive",
+            "plaid-version": "2020-09-14",
+            "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "X-XSS-Protection": "1; mode=block"
+          },
+          "status": 200,
+          "statusText": "OK",
+          "respondedAt": "2023-02-27T13:01:52.037636"
+        }
+      }
+    ],
+    [
+      {
+        "request": {
+          "id": "e2d682c2-3b74-4f8d-b356-a76150dd52d3",
+          "method": "POST",
+          "url": "https://sandbox.plaid.com:443/accounts/balance/get",
+          "body": "{\"access_token\": \"access-sandbox-1715e223-65e5-45aa-bc39-0ca0a64ec886\"}",
+          "headers": {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Plaid-Version": "2020-09-14",
+            "User-Agent": "Plaid Python v9.1.0",
+            "PLAID-CLIENT-ID": "5ef2da45ca4e880012173274",
+            "PLAID-SECRET": "249f479f2f0618c04623393f168bcd"
+          },
+          "path": "/accounts/balance/get",
+          "search": "",
+          "requestedAt": "2023-02-27T13:02:02.718695"
+        },
+        "response": {
+          "body": "{\n  \"accounts\": [\n    {\n      \"account_id\": \"vQvkRpq1DWS3ZX4VKXyBUwAnMvPv4xcnnvRKQ\",\n      \"balances\": {\n        \"available\": 100,\n        \"current\": 110,\n        \"iso_currency_code\": \"USD\",\n        \"limit\": null,\n        \"unofficial_currency_code\": null\n      },\n      \"mask\": \"0000\",\n      \"name\": \"Plaid Checking\",\n      \"official_name\": \"Plaid Gold Standard 0% Interest Checking\",\n      \"subtype\": \"checking\",\n      \"type\": \"depository\"\n    },\n    {\n      \"account_id\": \"Rnq91R8EMyFZE65Rd6plI4anjAPAkNfXXP4qg\",\n      \"balances\": {\n        \"available\": 200,\n        \"current\": 210,\n        \"iso_currency_code\": \"USD\",\n        \"limit\": null,\n        \"unofficial_currency_code\": null\n      },\n      \"mask\": \"1111\",\n      \"name\": \"Plaid Saving\",\n      \"official_name\": \"Plaid Silver Standard 0.1% Interest Saving\",\n      \"subtype\": \"savings\",\n      \"type\": \"depository\"\n    }\n  ],\n  \"item\": {\n    \"available_products\": [\n      \"assets\",\n      \"balance\",\n      \"credit_details\",\n      \"identity\",\n      \"income\",\n      \"investments\",\n      \"liabilities\"\n    ],\n    \"billed_products\": [\n      \"auth\",\n      \"transactions\"\n    ],\n    \"consent_expiration_time\": null,\n    \"error\": null,\n    \"institution_id\": \"ins_56\",\n    \"item_id\": \"9XJZwG8l7McZpnaMAneQIp1V8LkGPLFRkDzr3\",\n    \"optional_products\": null,\n    \"products\": [\n      \"auth\",\n      \"transactions\"\n    ],\n    \"update_type\": \"background\",\n    \"webhook\": \"\"\n  },\n  \"request_id\": \"RIj9mBAh8E5MVT6\"\n}",
+          "headers": {
+            "Server": "nginx",
+            "Date": "Mon, 27 Feb 2023 21:02:04 GMT",
+            "Content-Type": "application/json; charset=utf-8",
+            "Content-Length": "1453",
+            "Connection": "keep-alive",
+            "plaid-version": "2020-09-14",
+            "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "X-XSS-Protection": "1; mode=block"
+          },
+          "status": 200,
+          "statusText": "OK",
+          "respondedAt": "2023-02-27T13:02:04.150672"
+        }
+      }
+    ],
+    [
+      {
+        "request": {
+          "id": "321ad50d-ab9c-48d7-98e7-cd9c1f1eda76",
+          "method": "POST",
+          "url": "https://sandbox.plaid.com:443/link/token/create",
+          "body": "{\"client_name\": \"Plaid Quickstart\", \"language\": \"en\", \"country_codes\": [\"US\", \"CA\"], \"user\": {\"client_user_id\": \"1677532302.523288\"}, \"products\": [\"auth\", \"transactions\"]}",
+          "headers": {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Plaid-Version": "2020-09-14",
+            "User-Agent": "Plaid Python v9.1.0",
+            "PLAID-CLIENT-ID": "5ef2da45ca4e880012173274",
+            "PLAID-SECRET": "249f479f2f0618c04623393f168bcd"
+          },
+          "path": "/link/token/create",
+          "search": "",
+          "requestedAt": "2023-02-27T13:11:42.930132"
+        },
+        "response": {
+          "body": "{\n  \"expiration\": \"2023-02-28T01:11:43Z\",\n  \"link_token\": \"link-sandbox-c2295e60-b493-4508-ac0a-e54d0bede065\",\n  \"request_id\": \"izWz4hE9aBmN36I\"\n}",
+          "headers": {
+            "Server": "nginx",
+            "Date": "Mon, 27 Feb 2023 21:11:43 GMT",
+            "Content-Type": "application/json; charset=utf-8",
+            "Content-Length": "146",
+            "Connection": "keep-alive",
+            "plaid-version": "2020-09-14",
+            "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "X-XSS-Protection": "1; mode=block"
+          },
+          "status": 200,
+          "statusText": "OK",
+          "respondedAt": "2023-02-27T13:11:43.071062"
+        }
+      }
+    ],
+    [
+      {
+        "request": {
+          "id": "55b998f3-fdcb-40bf-9a02-069c622a2eac",
+          "method": "POST",
+          "url": "https://sandbox.plaid.com:443/item/public_token/exchange",
+          "body": "{\"public_token\": \"public-sandbox-f24e0575-b765-4a1e-ad06-64325616f571\"}",
+          "headers": {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Plaid-Version": "2020-09-14",
+            "User-Agent": "Plaid Python v9.1.0",
+            "PLAID-CLIENT-ID": "5ef2da45ca4e880012173274",
+            "PLAID-SECRET": "249f479f2f0618c04623393f168bcd"
+          },
+          "path": "/item/public_token/exchange",
+          "search": "",
+          "requestedAt": "2023-02-27T13:12:16.411922"
+        },
+        "response": {
+          "body": "{\n  \"access_token\": \"access-sandbox-961e50a7-115a-4be4-bb2e-d81f8d54f153\",\n  \"item_id\": \"KQ9RgZrbDZHw4wXVMkJah6kBoymK7eiVkqMJ6\",\n  \"request_id\": \"qZKCkTKxftCcKCo\"\n}",
+          "headers": {
+            "Server": "nginx",
+            "Date": "Mon, 27 Feb 2023 21:12:16 GMT",
+            "Content-Type": "application/json; charset=utf-8",
+            "Content-Length": "164",
+            "Connection": "keep-alive",
+            "plaid-version": "2020-09-14",
+            "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "X-XSS-Protection": "1; mode=block"
+          },
+          "status": 200,
+          "statusText": "OK",
+          "respondedAt": "2023-02-27T13:12:16.660542"
+        }
+      }
+    ],
+    [
+      {
+        "request": {
+          "id": "ccc75f30-d689-414f-a4a1-4102549c5067",
+          "method": "POST",
+          "url": "https://sandbox.plaid.com:443/auth/get",
+          "body": "{\"access_token\": \"access-sandbox-961e50a7-115a-4be4-bb2e-d81f8d54f153\"}",
+          "headers": {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Plaid-Version": "2020-09-14",
+            "User-Agent": "Plaid Python v9.1.0",
+            "PLAID-CLIENT-ID": "5ef2da45ca4e880012173274",
+            "PLAID-SECRET": "249f479f2f0618c04623393f168bcd"
+          },
+          "path": "/auth/get",
+          "search": "",
+          "requestedAt": "2023-02-27T13:12:17.957733"
+        },
+        "response": {
+          "body": "{\n  \"accounts\": [\n    {\n      \"account_id\": \"gVZp1kLEWkH8J83V9qXBTGnRogEdrmc485JbD\",\n      \"balances\": {\n        \"available\": 100,\n        \"current\": 110,\n        \"iso_currency_code\": \"USD\",\n        \"limit\": null,\n        \"unofficial_currency_code\": null\n      },\n      \"mask\": \"0000\",\n      \"name\": \"Plaid Checking\",\n      \"official_name\": \"Plaid Gold Standard 0% Interest Checking\",\n      \"subtype\": \"checking\",\n      \"type\": \"depository\"\n    },\n    {\n      \"account_id\": \"8GV6zq8NEqHPzPpNXVxvcbnwJ4lG1vuK38BA6\",\n      \"balances\": {\n        \"available\": 200,\n        \"current\": 210,\n        \"iso_currency_code\": \"USD\",\n        \"limit\": null,\n        \"unofficial_currency_code\": null\n      },\n      \"mask\": \"1111\",\n      \"name\": \"Plaid Saving\",\n      \"official_name\": \"Plaid Silver Standard 0.1% Interest Saving\",\n      \"subtype\": \"savings\",\n      \"type\": \"depository\"\n    }\n  ],\n  \"item\": {\n    \"available_products\": [\n      \"assets\",\n      \"balance\",\n      \"credit_details\",\n      \"identity\",\n      \"income\",\n      \"investments\",\n      \"liabilities\"\n    ],\n    \"billed_products\": [\n      \"auth\",\n      \"transactions\"\n    ],\n    \"consent_expiration_time\": null,\n    \"error\": null,\n    \"institution_id\": \"ins_56\",\n    \"item_id\": \"KQ9RgZrbDZHw4wXVMkJah6kBoymK7eiVkqMJ6\",\n    \"optional_products\": null,\n    \"products\": [\n      \"auth\",\n      \"transactions\"\n    ],\n    \"update_type\": \"background\",\n    \"webhook\": \"\"\n  },\n  \"numbers\": {\n    \"ach\": [\n      {\n        \"account\": \"1111222233330000\",\n        \"account_id\": \"gVZp1kLEWkH8J83V9qXBTGnRogEdrmc485JbD\",\n        \"routing\": \"011401533\",\n        \"wire_routing\": \"021000021\"\n      },\n      {\n        \"account\": \"1111222233331111\",\n        \"account_id\": \"8GV6zq8NEqHPzPpNXVxvcbnwJ4lG1vuK38BA6\",\n        \"routing\": \"011401533\",\n        \"wire_routing\": \"021000021\"\n      }\n    ],\n    \"bacs\": [],\n    \"eft\": [],\n    \"international\": []\n  },\n  \"request_id\": \"q0uh4NswfO1Z0o2\"\n}",
+          "headers": {
+            "Server": "nginx",
+            "Date": "Mon, 27 Feb 2023 21:12:18 GMT",
+            "Content-Type": "application/json; charset=utf-8",
+            "Content-Length": "1921",
+            "Connection": "keep-alive",
+            "plaid-version": "2020-09-14",
+            "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "X-XSS-Protection": "1; mode=block"
+          },
+          "status": 200,
+          "statusText": "OK",
+          "respondedAt": "2023-02-27T13:12:18.489468"
+        }
+      }
+    ],
+    [
+      {
+        "request": {
+          "id": "d2246f7b-4058-4b29-8dd5-66244fcc5f74",
+          "method": "POST",
+          "url": "https://sandbox.plaid.com:443/link/token/create",
+          "body": "{\"client_name\": \"Plaid Quickstart\", \"language\": \"en\", \"country_codes\": [\"US\", \"CA\"], \"user\": {\"client_user_id\": \"1677532383.0347068\"}, \"products\": [\"auth\", \"transactions\"]}",
+          "headers": {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Plaid-Version": "2020-09-14",
+            "User-Agent": "Plaid Python v9.1.0",
+            "PLAID-CLIENT-ID": "5ef2da45ca4e880012173274",
+            "PLAID-SECRET": "249f479f2f0618c04623393f168bcd"
+          },
+          "path": "/link/token/create",
+          "search": "",
+          "requestedAt": "2023-02-27T13:13:03.036048"
+        },
+        "response": {
+          "body": "{\n  \"expiration\": \"2023-02-28T01:13:03Z\",\n  \"link_token\": \"link-sandbox-32df7dfc-3117-4db1-ad44-522176cfb9f5\",\n  \"request_id\": \"Ab0VVwnVZE1mSiO\"\n}",
+          "headers": {
+            "Server": "nginx",
+            "Date": "Mon, 27 Feb 2023 21:13:03 GMT",
+            "Content-Type": "application/json; charset=utf-8",
+            "Content-Length": "146",
+            "Connection": "keep-alive",
+            "plaid-version": "2020-09-14",
+            "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "X-XSS-Protection": "1; mode=block"
+          },
+          "status": 200,
+          "statusText": "OK",
+          "respondedAt": "2023-02-27T13:13:03.380299"
+        }
+      }
+    ],
+    [
+      {
+        "request": {
+          "id": "fd1bca7c-fe32-469a-9662-d6e397422e2f",
+          "method": "POST",
+          "url": "https://sandbox.plaid.com:443/link/token/create",
+          "body": "{\"client_name\": \"Plaid Quickstart\", \"language\": \"en\", \"country_codes\": [\"US\", \"CA\"], \"user\": {\"client_user_id\": \"1677535839.1311948\"}, \"products\": [\"auth\", \"transactions\"]}",
+          "headers": {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Plaid-Version": "2020-09-14",
+            "User-Agent": "Plaid Python v9.1.0",
+            "PLAID-CLIENT-ID": "5ef2da45ca4e880012173274",
+            "PLAID-SECRET": "249f479f2f0618c04623393f168bcd"
+          },
+          "path": "/link/token/create",
+          "search": "",
+          "requestedAt": "2023-02-27T14:10:39.656833"
+        },
+        "response": {
+          "body": "{\n  \"expiration\": \"2023-02-28T02:10:40Z\",\n  \"link_token\": \"link-sandbox-fed0c1d5-c6c8-4e82-bb65-219e420ac66d\",\n  \"request_id\": \"ccS825pZ9rMT2b3\"\n}",
+          "headers": {
+            "Server": "nginx",
+            "Date": "Mon, 27 Feb 2023 22:10:39 GMT",
+            "Content-Type": "application/json; charset=utf-8",
+            "Content-Length": "146",
+            "Connection": "keep-alive",
+            "plaid-version": "2020-09-14",
+            "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "X-XSS-Protection": "1; mode=block"
+          },
+          "status": 200,
+          "statusText": "OK",
+          "respondedAt": "2023-02-27T14:10:39.806032"
+        }
+      }
+    ],
+    [
+      {
+        "request": {
+          "id": "0f4593d8-a6cc-47ee-8888-5ae9a54543bb",
+          "method": "POST",
+          "url": "https://sandbox.plaid.com:443/link/token/create",
+          "body": "{\"client_name\": \"Plaid Quickstart\", \"language\": \"en\", \"country_codes\": [\"US\", \"CA\"], \"user\": {\"client_user_id\": \"1677536373.4510038\"}, \"products\": [\"auth\", \"transactions\"]}",
+          "headers": {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Plaid-Version": "2020-09-14",
+            "User-Agent": "Plaid Python v9.1.0",
+            "PLAID-CLIENT-ID": "5ef2da45ca4e880012173274",
+            "PLAID-SECRET": "249f479f2f0618c04623393f168bcd"
+          },
+          "path": "/link/token/create",
+          "search": "",
+          "requestedAt": "2023-02-27T14:19:33.811831"
+        },
+        "response": {
+          "body": "{\n  \"expiration\": \"2023-02-28T02:19:34Z\",\n  \"link_token\": \"link-sandbox-902c3ef4-1e80-4474-a5a0-2fe214c0aab1\",\n  \"request_id\": \"SfvPkFTSvn6BJVP\"\n}",
+          "headers": {
+            "Server": "nginx",
+            "Date": "Mon, 27 Feb 2023 22:19:33 GMT",
+            "Content-Type": "application/json; charset=utf-8",
+            "Content-Length": "146",
+            "Connection": "keep-alive",
+            "plaid-version": "2020-09-14",
+            "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "X-XSS-Protection": "1; mode=block"
+          },
+          "status": 200,
+          "statusText": "OK",
+          "respondedAt": "2023-02-27T14:19:34.020992"
+        }
+      }
+    ],
+    [
+      {
+        "request": {
+          "id": "c210fab1-2c87-468e-9adc-5ed302bda023",
+          "method": "POST",
+          "url": "https://sandbox.plaid.com:443/link/token/create",
+          "body": "{\"client_name\": \"Plaid Quickstart\", \"language\": \"en\", \"country_codes\": [\"US\", \"CA\"], \"user\": {\"client_user_id\": \"1677536707.913634\"}, \"products\": [\"auth\", \"transactions\"]}",
+          "headers": {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Plaid-Version": "2020-09-14",
+            "User-Agent": "Plaid Python v9.1.0",
+            "PLAID-CLIENT-ID": "5ef2da45ca4e880012173274",
+            "PLAID-SECRET": "249f479f2f0618c04623393f168bcd"
+          },
+          "path": "/link/token/create",
+          "search": "",
+          "requestedAt": "2023-02-27T14:25:08.228508"
+        },
+        "response": {
+          "body": "{\n  \"expiration\": \"2023-02-28T02:25:08Z\",\n  \"link_token\": \"link-sandbox-7a58b0ec-a904-44e3-a53f-6911a1f7e3c9\",\n  \"request_id\": \"OVsJ6Ecv41k71cR\"\n}",
+          "headers": {
+            "Server": "nginx",
+            "Date": "Mon, 27 Feb 2023 22:25:08 GMT",
+            "Content-Type": "application/json; charset=utf-8",
+            "Content-Length": "146",
+            "Connection": "keep-alive",
+            "plaid-version": "2020-09-14",
+            "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "X-XSS-Protection": "1; mode=block"
+          },
+          "status": 200,
+          "statusText": "OK",
+          "respondedAt": "2023-02-27T14:25:08.381183"
+        }
+      }
+    ],
+    [
+      {
+        "request": {
+          "id": "35a7a01c-83b9-4877-bff6-c55b48adc834",
+          "method": "POST",
+          "url": "https://sandbox.plaid.com:443/link/token/create",
+          "body": {
+            "hashed": "b'4ZkoAaviYmz73DNPiRfbCMV8rK0='"
+          },
+          "headers": {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Plaid-Version": "2020-09-14",
+            "User-Agent": "Plaid Python v9.1.0",
+            "PLAID-CLIENT-ID": "5ef2da45ca4e880012173274",
+            "PLAID-SECRET": "249f479f2f0618c04623393f168bcd"
+          },
+          "path": "/link/token/create",
+          "search": "",
+          "requestedAt": "2023-02-27T21:28:44.159829"
+        },
+        "response": {
+          "body": {
+            "hashed": "b'ln+j2nqG1KCqena9VmdPOYW9OO8='"
+          },
+          "headers": {
+            "Server": "nginx",
+            "Date": "Tue, 28 Feb 2023 05:28:44 GMT",
+            "Content-Type": "application/json; charset=utf-8",
+            "Content-Length": "146",
+            "Connection": "keep-alive",
+            "plaid-version": "2020-09-14",
+            "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "X-XSS-Protection": "1; mode=block"
+          },
+          "status": 200,
+          "statusText": "OK",
+          "respondedAt": "2023-02-27T21:28:44.446103"
+        }
+      }
+    ],
+    [
+      {
+        "request": {
+          "id": "8dd5420b-300c-4c7c-9593-47d3d7ac98e5",
+          "method": "POST",
+          "url": "https://sandbox.plaid.com:443/link/token/create",
+          "body": {
+            "hashed": "5kTxdTdfm61+enL7COyeodh7u98="
+          },
+          "headers": {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Plaid-Version": "2020-09-14",
+            "User-Agent": "Plaid Python v9.1.0",
+            "PLAID-CLIENT-ID": "5ef2da45ca4e880012173274",
+            "PLAID-SECRET": "249f479f2f0618c04623393f168bcd"
+          },
+          "path": "/link/token/create",
+          "search": "",
+          "requestedAt": "2023-02-27T21:30:17.593717"
+        },
+        "response": {
+          "body": {
+            "hashed": "EqAWYdW0TqNIZRdsPzs9g9QRClI="
+          },
+          "headers": {
+            "Server": "nginx",
+            "Date": "Tue, 28 Feb 2023 05:30:17 GMT",
+            "Content-Type": "application/json; charset=utf-8",
+            "Content-Length": "146",
+            "Connection": "keep-alive",
+            "plaid-version": "2020-09-14",
+            "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "X-XSS-Protection": "1; mode=block"
+          },
+          "status": 200,
+          "statusText": "OK",
+          "respondedAt": "2023-02-27T21:30:17.766777"
+        }
+      }
+    ],
+    [
+      {
+        "request": {
+          "id": "5843e4b5-48df-4998-ba44-9d10d4f71597",
+          "method": "POST",
+          "url": "https://sandbox.plaid.com:443/link/token/create",
+          "body": {
+            "hashed": "hcfgMbdY5hG4EaUdPEPs9p7aJvs="
+          },
+          "headers": {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Plaid-Version": "2020-09-14",
+            "User-Agent": "Plaid Python v9.1.0",
+            "PLAID-CLIENT-ID": "5ef2da45ca4e880012173274",
+            "PLAID-SECRET": "249f479f2f0618c04623393f168bcd"
+          },
+          "path": "/link/token/create",
+          "search": "",
+          "requestedAt": "2023-02-27T21:31:39.650486"
+        },
+        "response": {
+          "body": {
+            "hashed": "PcH9Kc1MWRcj9VRavUk1jv9UXTM="
+          },
+          "headers": {
+            "Server": "nginx",
+            "Date": "Tue, 28 Feb 2023 05:31:39 GMT",
+            "Content-Type": "application/json; charset=utf-8",
+            "Content-Length": "146",
+            "Connection": "keep-alive",
+            "plaid-version": "2020-09-14",
+            "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "X-XSS-Protection": "1; mode=block"
+          },
+          "status": 200,
+          "statusText": "OK",
+          "respondedAt": "2023-02-27T21:31:39.797600"
+        }
+      }
+    ],
+    [
+      {
+        "request": {
+          "id": "cbaee492-92ff-47ba-bea1-24073718b9cd",
+          "method": "POST",
+          "url": "https://sandbox.plaid.com:443/link/token/create",
+          "body": {
+            "hashed": "PaJDoSuIpsU4xulFEEuyKsPIFR8="
+          },
+          "headers": {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Plaid-Version": "2020-09-14",
+            "User-Agent": "Plaid Python v9.1.0",
+            "PLAID-CLIENT-ID": "5ef2da45ca4e880012173274",
+            "PLAID-SECRET": "249f479f2f0618c04623393f168bcd"
+          },
+          "path": "/link/token/create",
+          "search": "",
+          "requestedAt": "2023-02-27T21:40:30.323506"
+        },
+        "response": {
+          "body": {
+            "hashed": "ykT9ZcDMeh/kLATQ+Bc7CpGvU5g="
+          },
+          "headers": {
+            "Server": "nginx",
+            "Date": "Tue, 28 Feb 2023 05:40:30 GMT",
+            "Content-Type": "application/json; charset=utf-8",
+            "Content-Length": "146",
+            "Connection": "keep-alive",
+            "plaid-version": "2020-09-14",
+            "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "X-XSS-Protection": "1; mode=block"
+          },
+          "status": 200,
+          "statusText": "OK",
+          "respondedAt": "2023-02-27T21:40:30.560464"
+        }
+      }
+    ],
+    [
+      {
+        "request": {
+          "id": "7ec02a0b-3d8f-4c19-b6fb-74a21e589386",
+          "method": "POST",
+          "url": "https://sandbox.plaid.com:443/link/token/create",
+          "body": {
+            "hashed": "SI+z80lDnKmV/7ZkOS6aVtV+s+0="
+          },
+          "headers": {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Plaid-Version": "2020-09-14",
+            "User-Agent": "Plaid Python v9.1.0",
+            "PLAID-CLIENT-ID": "5ef2da45ca4e880012173274",
+            "PLAID-SECRET": "249f479f2f0618c04623393f168bcd"
+          },
+          "path": "/link/token/create",
+          "search": "",
+          "requestedAt": "2023-02-27T21:48:14.916562"
+        },
+        "response": {
+          "body": {
+            "hashed": "kPsKWnfA3m19sBXM0/0ZavB4ttw="
+          },
+          "headers": {
+            "Server": "nginx",
+            "Date": "Tue, 28 Feb 2023 05:48:15 GMT",
+            "Content-Type": "application/json; charset=utf-8",
+            "Content-Length": "146",
+            "Connection": "keep-alive",
+            "plaid-version": "2020-09-14",
+            "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "X-XSS-Protection": "1; mode=block"
+          },
+          "status": 200,
+          "statusText": "OK",
+          "respondedAt": "2023-02-27T21:48:15.067414"
+        }
+      }
+    ],
+    [
+      {
+        "request": {
+          "id": "e79a4ced-1731-4229-8d8d-fd399b056ad8",
+          "method": "POST",
+          "url": "https://sandbox.plaid.com:443/link/token/create",
+          "body": {
+            "hashed": "lZRVHXQwLWcLp/vrdrZ1Acg/c+E="
+          },
+          "headers": {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Plaid-Version": "2020-09-14",
+            "User-Agent": "Plaid Python v9.1.0",
+            "PLAID-CLIENT-ID": "5ef2da45ca4e880012173274",
+            "PLAID-SECRET": "249f479f2f0618c04623393f168bcd"
+          },
+          "path": "/link/token/create",
+          "search": "",
+          "requestedAt": "2023-02-27T21:55:08.326969"
+        },
+        "response": {
+          "body": {
+            "hashed": "MxN1CwHN5OMENVccZJG8Jn9Q6kI="
+          },
+          "headers": {
+            "Server": "nginx",
+            "Date": "Tue, 28 Feb 2023 05:55:08 GMT",
+            "Content-Type": "application/json; charset=utf-8",
+            "Content-Length": "146",
+            "Connection": "keep-alive",
+            "plaid-version": "2020-09-14",
+            "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "X-XSS-Protection": "1; mode=block"
+          },
+          "status": 200,
+          "statusText": "OK",
+          "respondedAt": "2023-02-27T21:55:08.653743"
+        }
+      }
+    ]
+  ]
+}
