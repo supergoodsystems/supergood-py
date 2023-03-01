@@ -81,23 +81,31 @@ class Client(object):
         :return: None
         """
         def intercepted_request(_self, method, path, body=None, headers={}, encode_chunked=False, **kwargs) -> http.client.HTTPConnection.request:
-            request_id = str(uuid4())
-            setattr(_self, 'request_id', request_id)
-            port = f':{_self.port}' if _self.port else ''
-            scheme = 'https' if _self.port == self.original_client.HTTPS_PORT else 'http'
-            full_url = f'{scheme}://{_self.host}{port}{path}'
-            if (_self.host != self.base_url and _self.host not in self.config['ignored_domains']):
-                parsed_url = urlparse(full_url)
-                self._request_cache[request_id] = {
-                    'id': request_id,
-                    'method': method,
-                    'url': full_url,
-                    'body': safe_parse_json(body),
-                    'headers':  headers,
-                    'path': path,
-                    'search': parsed_url.query,
-                    'requestedAt': datetime.now().isoformat()
-                }
+            try:
+                request_id = str(uuid4())
+                setattr(_self, 'request_id', request_id)
+                port = f':{_self.port}' if _self.port else ''
+                scheme = 'https' if _self.port == self.original_client.HTTPS_PORT else 'http'
+                full_url = f'{scheme}://{_self.host}{port}{path}'
+                if (_self.host != self.base_url and _self.host not in self.config['ignored_domains']):
+                    parsed_url = urlparse(full_url)
+                    request = {
+                        'id': request_id,
+                        'method': method,
+                        'url': full_url,
+                        'body': safe_parse_json(body),
+                        'headers':  headers,
+                        'path': path,
+                        'search': parsed_url.query,
+                        'requestedAt': datetime.now().isoformat()
+                    }
+                    self._request_cache[request_id] = request
+            except Exception as e:
+                self.log.error(
+                    { 'request': request, 'config': self.config },
+                    e,
+                    ERRORS['CACHING_REQUEST']
+                )
 
             return self.original_request(_self, method, path, body=body, headers=headers, encode_chunked=encode_chunked, **kwargs)
 
@@ -128,23 +136,32 @@ class Client(object):
 
         def intercepted_read(_self, *args):
             response_body = self.original_read(_self, *args)
-            response_headers = self.original_getheaders(_self)
-            request_id = getattr(_self, 'request_id')
-            request = self._request_cache[request_id]
-            body = response_body.decode('utf-8')
+            try:
+                response_headers = self.original_getheaders(_self)
+                request_id = getattr(_self, 'request_id')
+                request = self._request_cache[request_id]
+                body = response_body.decode('utf-8')
 
-            if(request):
-                self._response_cache[request_id] = hash_values_from_keys({
-                    'request': request,
-                    'response': {
-                        'body':  safe_parse_json(body),
-                        'headers': dict(response_headers),
-                        'status': _self.status,
-                        'statusText': _self.reason,
-                        'respondedAt': datetime.now().isoformat(),
-                    }
-                }, self.config['keys_to_hash'])
-                self._request_cache.pop(request_id)
+                if(request):
+                    response = {
+                            'body':  safe_parse_json(body),
+                            'headers': dict(response_headers),
+                            'status': _self.status,
+                            'statusText': _self.reason,
+                            'respondedAt': datetime.now().isoformat(),
+                        }
+                    self._response_cache[request_id] = hash_values_from_keys({
+                        'request': request,
+                        'response': response
+                    }, self.config['keys_to_hash'])
+                    self._request_cache.pop(request_id)
+            except Exception as e:
+                self.log.error(
+                    { 'request': request, 'response': response, 'config': self.config },
+                    e,
+                    ERRORS['CACHING_RESPONSE']
+                )
+
             return response_body
 
         self.client.HTTPResponse.read = intercepted_read
@@ -183,7 +200,7 @@ class Client(object):
             self.log.debug(f'Flushing {len(data)} items')
             self.api.post_events(data)
         except Exception as error:
-            self.log.error(data, error, ERRORS['CACHING_RESPONSE'])
+            self.log.error({ 'data': data, 'config': self.config }, error, ERRORS['POSTING_EVENTS'])
         finally:
             self._response_cache.clear()
             if(force):
