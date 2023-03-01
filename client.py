@@ -43,7 +43,7 @@ class Client(object):
             }
 
 
-        self.api = Api(header_options, self.base_url)
+        self.api = Api(header_options, base_url=self.base_url)
         self.config = self.api.fetch_config()
         self.log = Logger(self.__class__.__name__, self.config, self.api)
 
@@ -178,7 +178,7 @@ class Client(object):
         data = list(self._response_cache.values())
 
         if(force):
-            data.append(list(self._request_cache.values()))
+            data += list(self._request_cache.values())
         try:
             self.log.debug(f'Flushing {len(data)} items')
             self.api.post_events(data)
