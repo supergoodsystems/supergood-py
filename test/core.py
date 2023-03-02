@@ -2,6 +2,8 @@ import unittest
 import sys
 import requests
 import time
+import re
+import urllib3
 
 from dotenv import load_dotenv
 from pytest_httpserver import HTTPServer
@@ -18,13 +20,13 @@ from supergood_py.api import Api
 load_dotenv()
 
 
-def get_config(httpserver):
+def get_config(httpserver, flush_interval=30, keys_to_hash=[], ignored_domains=[]):
     return {
-                'flush_interval': 30,
+                'flush_interval': flush_interval,
                 'event_sink_endpoint': httpserver.url_for('/api/events'),
                 'error_sink_endpoint': httpserver.url_for('/api/errors'),
-                'keys_to_hash': ['request.body', 'response.body'],
-                'ignored_domains': []
+                'keys_to_hash': keys_to_hash,
+                'ignored_domains': ignored_domains
             }
 
 class SupergoodTestCase(unittest.TestCase):
@@ -107,23 +109,95 @@ class SupergoodTestCase(unittest.TestCase):
                 assert error_message == ERRORS['POSTING_EVENTS']
 
 
-    #     'posting errors'
+    def test_hashing_entire_body_from_config(self):
+        with HTTPServer() as httpserver:
+            config = get_config(httpserver, keys_to_hash=['response.body'])
+            httpserver.expect_request('/api/config').respond_with_json(config)
+            self.client = Client(base_url=httpserver.url_for('/'))
 
-    # 'config specifications'
-    #     'hashing'
-    #     'not hashing'
-    #     'keys to hash not in config'
-    #     'ignores requests to ignored domains'
-    #     'operates normally when ignored domains is empty'
+            with HTTPServer() as outbound_server:
+                outbound_server.expect_request('/200').respond_with_json({ 'success': True }, status=200)
+                with patch.object(Api, 'post_events') as mocked_events:
+                    requests.get(outbound_server.url_for('/200'))
+                    self.client.close()
 
-    # 'testing various endpoints and libraries basic functionality'
-    #     '<different http libraries>'
+                args = mocked_events.call_args[0][0]
+                # Regex to match a base64 encoded string
+                assert re.match(r'^[A-Za-z0-9+/]+[=]{0,2}$', args[0]['response']['body']['hashed']) is not None
 
-# def test_success_states_suite():
-#     suite = unittest.TestSuite()
-#     suite.addTest(SupergoodTestCase('test_captures_all_outgoing_200_http_requests'))
-#     suite.addTest(SupergoodTestCase('test_captures_non_success_status_and_errors'))
-#     return suite
+    def test_hashing_single_field_in_body_from_config(self):
+        with HTTPServer() as httpserver:
+            config = get_config(httpserver, keys_to_hash=['response.body.keys.hash_me', 'response.body.keys.i_dont_exist'])
+            httpserver.expect_request('/api/config').respond_with_json(config)
+            self.client = Client(base_url=httpserver.url_for('/'))
+
+            with HTTPServer() as outbound_server:
+                outbound_server.expect_request('/200').respond_with_json({ 'keys': { 'hash_me': 'abc', 'dont_hash_me': 'def '} }, status=200)
+                with patch.object(Api, 'post_events') as mocked_events:
+                    requests.get(outbound_server.url_for('/200'))
+                    self.client.close()
+
+                args = mocked_events.call_args[0][0]
+                # Regex to match a base64 encoded string
+                assert re.match(r'^[A-Za-z0-9+/]+[=]{0,2}$', args[0]['response']['body']['keys']['hash_me']) is not None
+                assert re.match(r'^[A-Za-z0-9+/]+[=]{0,2}$', args[0]['response']['body']['keys']['dont_hash_me']) is None
+
+    def test_hashing_headers_from_config(self):
+        with HTTPServer() as httpserver:
+            config = get_config(httpserver, keys_to_hash=['request.headers', 'response.headers.X-Test-Header'])
+            httpserver.expect_request('/api/config').respond_with_json(config)
+            self.client = Client(base_url=httpserver.url_for('/'))
+
+            with HTTPServer() as outbound_server:
+                outbound_server.expect_request('/200').respond_with_json({ 'success': True }, status=200, headers={'X-Test-Header': 'abc'})
+                with patch.object(Api, 'post_events') as mocked_events:
+                    requests.get(outbound_server.url_for('/200'))
+                    self.client.close()
+
+                args = mocked_events.call_args[0][0]
+                # Regex to match a base64 encoded string
+                assert re.match(r'^[A-Za-z0-9+/]+[=]{0,2}$', args[0]['response']['headers']['X-Test-Header']) is not None
+
+    def test_accepts_requests_to_non_ignored_domains(self):
+        with HTTPServer() as httpserver:
+            config = get_config(httpserver, ignored_domains=[])
+            httpserver.expect_request('/api/config').respond_with_json(config)
+            self.client = Client(base_url=httpserver.url_for('/'))
+
+            with patch.object(Api, 'post_events') as mocked_events:
+                requests.get('http://supergood-testbed.herokuapp.com/200')
+                self.client.close()
+
+            args = mocked_events.call_args[0][0][0]
+            assert 'http://supergood-testbed.herokuapp.com:80/200' == args['request']['url']
+
+    def test_ignores_requests_to_ignored_domains(self):
+        with HTTPServer() as httpserver:
+            config = get_config(httpserver, ignored_domains=['supergood-testbed.herokuapp.com'])
+            httpserver.expect_request('/api/config').respond_with_json(config)
+            self.client = Client(base_url=httpserver.url_for('/'))
+
+            with patch.object(Api, 'post_events') as mocked_events:
+                requests.get('http://supergood-testbed.herokuapp.com/200')
+                self.client.close()
+
+            mocked_events.assert_not_called()
+
+    def test_different_http_library(self):
+        with HTTPServer() as httpserver:
+            config = get_config(httpserver)
+            httpserver.expect_request('/api/config').respond_with_json(config)
+            self.client = Client(base_url=httpserver.url_for('/'))
+
+            with HTTPServer() as outbound_server:
+                outbound_server.expect_request('/200').respond_with_json({ 'success': True }, status=200)
+                with patch.object(Api, 'post_events') as mocked_events:
+                    http = urllib3.PoolManager()
+                    http.request('GET', outbound_server.url_for('/200'))
+                    self.client.close()
+
+                args = mocked_events.call_args[0][0]
+                assert len(args) == 1
 
 def suite_success_states():
     suite = unittest.TestSuite()
@@ -137,8 +211,24 @@ def suite_failure_states():
     suite.addTest(SupergoodTestCase('test_posting_errors'))
     return suite
 
+def suite_config_specifications():
+    suite = unittest.TestSuite()
+    suite.addTest(SupergoodTestCase('test_hashing_entire_body_from_config'))
+    suite.addTest(SupergoodTestCase('test_hashing_single_field_in_body_from_config'))
+    suite.addTest(SupergoodTestCase('test_hashing_headers_from_config'))
+    suite.addTest(SupergoodTestCase('test_ignores_requests_to_ignored_domains'))
+    suite.addTest(SupergoodTestCase('test_accepts_requests_to_non_ignored_domains'))
+    return suite
+
+def suite_test_different_http_library():
+    suite = unittest.TestSuite()
+    suite.addTest(SupergoodTestCase('test_different_http_library'))
+    return suite
+
 if __name__ == '__main__':
     runner = unittest.TextTestRunner()
-    # runner.run(suite_success_states())
+    runner.run(suite_success_states())
     runner.run(suite_failure_states())
+    runner.run(suite_config_specifications())
+    runner.run(suite_test_different_http_library())
 

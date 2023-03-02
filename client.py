@@ -81,7 +81,6 @@ class Client(object):
         :return: None
         """
         def intercepted_request(_self, method, path, body=None, headers={}, encode_chunked=False, **kwargs) -> http.client.HTTPConnection.request:
-            try:
                 request_id = str(uuid4())
                 setattr(_self, 'request_id', request_id)
                 port = f':{_self.port}' if _self.port else ''
@@ -89,25 +88,26 @@ class Client(object):
                 full_url = f'{scheme}://{_self.host}{port}{path}'
                 if (_self.host != self.base_url and _self.host not in self.config['ignored_domains']):
                     parsed_url = urlparse(full_url)
-                    request = {
-                        'id': request_id,
-                        'method': method,
-                        'url': full_url,
-                        'body': safe_parse_json(body),
-                        'headers':  headers,
-                        'path': path,
-                        'search': parsed_url.query,
-                        'requestedAt': datetime.now().isoformat()
-                    }
-                    self._request_cache[request_id] = request
-            except Exception as e:
-                self.log.error(
-                    { 'request': request, 'config': self.config },
-                    e,
-                    ERRORS['CACHING_REQUEST']
-                )
+                    try:
+                        request = {
+                            'id': request_id,
+                            'method': method,
+                            'url': full_url,
+                            'body': safe_parse_json(body),
+                            'headers':  headers,
+                            'path': path,
+                            'search': parsed_url.query,
+                            'requestedAt': datetime.now().isoformat()
+                        }
+                        self._request_cache[request_id] = request
+                    except Exception as e:
+                        self.log.error(
+                            { 'request': request, 'config': self.config },
+                            e,
+                            ERRORS['CACHING_REQUEST']
+                        )
 
-            return self.original_request(_self, method, path, body=body, headers=headers, encode_chunked=encode_chunked, **kwargs)
+                return self.original_request(_self, method, path, body=body, headers=headers, encode_chunked=encode_chunked, **kwargs)
 
         self.client.HTTPConnection.request = intercepted_request
 
@@ -139,7 +139,7 @@ class Client(object):
             try:
                 response_headers = self.original_getheaders(_self)
                 request_id = getattr(_self, 'request_id')
-                request = self._request_cache[request_id]
+                request = self._request_cache.get(request_id, None)
                 body = response_body.decode('utf-8')
 
                 if(request):
