@@ -18,5 +18,5 @@ classifiers = [
 "Bug Tracker" = "https://github.com/supergoodsystems/supergood-py/issues"
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
