@@ -1,4 +1,4 @@
 .env
 test/db.json
 test/routes.json
-dist/*
+dist/
