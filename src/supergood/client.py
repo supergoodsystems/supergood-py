@@ -26,7 +26,6 @@ class Client(object):
         client_secret_id=os.getenv('SUPERGOOD_CLIENT_SECRET'),
         base_url=os.getenv('SUPERGOOD_BASE_URL')
     ):
-        print(client_id, client_secret_id, base_url)
         self.base_url = base_url if base_url else DEFAULT_SUPERGOOD_BASE_URL
         self.client = http.client
 
@@ -45,7 +44,6 @@ class Client(object):
 
         self.api = Api(header_options, base_url=self.base_url)
         self.config = self.api.fetch_config()
-        print(self.config)
         self.log = Logger(self.__class__.__name__, self.config, self.api)
 
         self.api.set_logger(self.log)
