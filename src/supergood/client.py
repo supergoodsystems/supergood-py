@@ -26,6 +26,7 @@ class Client(object):
         client_secret_id=os.getenv('SUPERGOOD_CLIENT_SECRET'),
         base_url=os.getenv('SUPERGOOD_BASE_URL')
     ):
+        print(client_id, client_secret_id, base_url)
         self.base_url = base_url if base_url else DEFAULT_SUPERGOOD_BASE_URL
         self.client = http.client
 
@@ -42,14 +43,14 @@ class Client(object):
                 'Authorization' : 'Basic ' + b64encode(bytes(authorization, 'utf-8')).decode('utf-8')
             }
 
-
         self.api = Api(header_options, base_url=self.base_url)
         self.config = self.api.fetch_config()
+        print(self.config)
         self.log = Logger(self.__class__.__name__, self.config, self.api)
 
         self.api.set_logger(self.log)
-        self.api.set_event_sink_url(self.config['event_sink_endpoint'])
-        self.api.set_error_sink_url(self.config['error_sink_endpoint'])
+        self.api.set_event_sink_url(self.config['eventSinkEndpoint'])
+        self.api.set_error_sink_url(self.config['errorSinkEndpoint'])
 
         self._intercept_getresponse()
         self._intercept_read()
@@ -58,7 +59,7 @@ class Client(object):
         self._request_cache = {}
         self._response_cache = {}
 
-        self.interval = self.set_interval(self.flush_cache, self.config['flush_interval'])
+        self.interval = self.set_interval(self.flush_cache, self.config['flushInterval'] / 1000)
 
     def set_interval(self, func, sec):
         def func_wrapper():
@@ -86,7 +87,7 @@ class Client(object):
                 port = f':{_self.port}' if _self.port else ''
                 scheme = 'https' if _self.port == self.original_client.HTTPS_PORT else 'http'
                 full_url = f'{scheme}://{_self.host}{port}{path}'
-                if (_self.host != self.base_url and _self.host not in self.config['ignored_domains']):
+                if (_self.host != self.base_url and _self.host not in self.config['ignoredDomains']):
                     parsed_url = urlparse(full_url)
                     try:
                         request = {
@@ -153,7 +154,7 @@ class Client(object):
                     self._response_cache[request_id] = hash_values_from_keys({
                         'request': request,
                         'response': response
-                    }, self.config['keys_to_hash'])
+                    }, self.config['keysToHash'])
                     self._request_cache.pop(request_id)
             except Exception as e:
                 self.log.error(

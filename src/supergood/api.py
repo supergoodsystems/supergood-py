@@ -1,20 +1,21 @@
 import requests
 import json
 from .constants import *
-
+from urllib.parse import urljoin
 class Api(object):
     def __init__(self, header_options, base_url=DEFAULT_SUPERGOOD_BASE_URL):
+        self.base_url = base_url
         self.header_options = header_options
-        self.config_fetch_url = base_url + 'api/config'
+        self.config_fetch_url = urljoin(self.base_url, 'api/config')
 
     def set_logger(self, logger):
         self.log = logger
 
-    def set_event_sink_url(self, url):
-        self.event_sink_url = url
+    def set_event_sink_url(self, endpoint):
+        self.event_sink_url = urljoin(self.base_url, endpoint)
 
-    def set_error_sink_url(self, url):
-        self.error_sink_url = url
+    def set_error_sink_url(self, endpoint):
+        self.error_sink_url = urljoin(self.base_url, endpoint)
 
     def post_events(self, payload):
         response = requests.post(self.event_sink_url, json=payload, headers=self.header_options)

@@ -14,6 +14,7 @@ DEFAULT_SUPERGOOD_CONFIG = {
     'keys_to_hash': ['request.body', 'response.body'],
     'ignored_domains': []
 }
+
 ERRORS = {
     "CACHING_RESPONSE": 'Error Caching Response',
     "CACHING_REQUEST": 'Error Caching Request',
