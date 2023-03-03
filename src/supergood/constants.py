@@ -5,8 +5,8 @@ SIGNALS = [
     signal.SIGINT,
 ]
 
-DEFAULT_SUPERGOOD_CONFIG_URL = 'http://localhost:3002/api/config/'
-DEFAULT_SUPERGOOD_BASE_URL = 'https://staging.dashboard.supergood.ai/'
+DEFAULT_SUPERGOOD_CONFIG_URL = 'https://dashboard.supergood.ai/api/config/'
+DEFAULT_SUPERGOOD_BASE_URL = 'https://dashboard.supergood.ai/'
 DEFAULT_SUPERGOOD_CONFIG = {
     'flush_interval': 1,
     'event_sink_endpoint': DEFAULT_SUPERGOOD_BASE_URL + 'api/events',
