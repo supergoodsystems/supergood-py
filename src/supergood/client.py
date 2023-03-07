@@ -69,8 +69,6 @@ class Client(object):
 
         # On clean exit, or terminated exit - exit gracefully
         atexit.register(self.close)
-        for s in SIGNALS:
-            signal.signal(s, self.close)
 
     def set_interval(self, func, sec):
         def func_wrapper():
@@ -173,7 +171,7 @@ class Client(object):
                         'method': method,
                         'url': full_url,
                         'body': safe_parse_json(body),
-                        'headers':  json.dumps(dict(headers)),
+                        'headers': dict(headers),
                         'path': path,
                         'search': parsed_url.query,
                         'requestedAt': now,
@@ -204,7 +202,7 @@ class Client(object):
             if(request):
                 response = {
                     'body': safe_parse_json(decoded_body),
-                    'headers': json.dumps(dict(response_headers)),
+                    'headers': dict(response_headers),
                     'status': response_object.status,
                     'statusText': response_object.reason,
                     'respondedAt': datetime.now().isoformat(),
