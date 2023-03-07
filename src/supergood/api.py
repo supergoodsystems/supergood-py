@@ -1,7 +1,8 @@
 import requests
-import json
+
 from .constants import *
 from urllib.parse import urljoin
+
 class Api(object):
     def __init__(self, header_options, base_url=DEFAULT_SUPERGOOD_BASE_URL):
         self.base_url = base_url
@@ -28,7 +29,7 @@ class Api(object):
     def post_errors(self, data, error, message):
         json = {
             'payload': data,
-            'error': error,
+            'error': str(error),
             'message': message
         }
         try:
