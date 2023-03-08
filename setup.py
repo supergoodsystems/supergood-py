@@ -22,6 +22,9 @@ setuptools.setup(
     install_requires=[
         'pydash',
         'python-dotenv',
-        'requests'
+        'requests',
+        'jsonpickle',
+        'asyncio',
+        'aiohttp',
     ]
 )

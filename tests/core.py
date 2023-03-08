@@ -4,6 +4,10 @@ import requests
 import time
 import re
 import urllib3
+import aiohttp
+import asyncio
+import json
+
 from urllib.parse import urlparse
 
 from dotenv import load_dotenv
@@ -94,8 +98,9 @@ class SupergoodTestCase(unittest.TestCase):
                 self.client.close()
 
             assert json.get("mapResults", {}).get("totalItems", 0) >= 0
-            args = mocked_events.call_args[0][0]
-            assert len(args) == 1
+            args = mocked_events.call_args[0][0][0]
+            assert args['request'] is not None
+            assert args['response'] is not None
 
     def test_hanging_response(self):
         HANG_TIME_IN_SECONDS = 2
@@ -194,6 +199,40 @@ class SupergoodTestCase(unittest.TestCase):
             args = mocked_events.call_args[0][0]
             assert len(args) == 1
 
+    def test_aiohttp_library(self):
+        async def aiohttp_request():
+            async with aiohttp.ClientSession() as session:
+                async with session.get(f'{TEST_BED_URL}/200?success=true', headers=HEADERS, json=PAYLOAD) as response:
+                    return await response.json()
+
+        with HTTPServer() as httpserver:
+            config = get_config(httpserver)
+            httpserver.expect_request('/api/config').respond_with_json(config)
+            self.client = Client(base_url=httpserver.url_for('/'))
+            with patch.object(Api, 'post_events') as mocked_events:
+                response = asyncio.run(aiohttp_request())
+                self.client.close()
+
+            args = mocked_events.call_args[0][0][0]
+
+            assert response['success'] == 'true'
+            assert args['response'] is not None
+            assert args['request'] is not None
+
+    def test_requests_library(self):
+        with HTTPServer() as httpserver:
+            config = get_config(httpserver)
+            httpserver.expect_request('/api/config').respond_with_json(config)
+            self.client = Client(base_url=httpserver.url_for('/'))
+            with patch.object(Api, 'post_events') as mocked_events:
+                response = requests.get(f'{TEST_BED_URL}/200?content=im-content')
+                content = response.json()
+                self.client.close()
+
+            args = mocked_events.call_args[0][0][0]
+            assert args['request'] is not None
+            assert args['response'] is not None
+
 def suite_success_states():
     suite = unittest.TestSuite()
     suite.addTest(SupergoodTestCase('test_captures_all_outgoing_200_http_requests'))
@@ -216,7 +255,8 @@ def suite_config_specifications():
 
 def suite_test_different_http_library():
     suite = unittest.TestSuite()
-    suite.addTest(SupergoodTestCase('test_different_http_library'))
+    suite.addTest(SupergoodTestCase('test_requests_library'))
+    suite.addTest(SupergoodTestCase('test_aiohttp_library'))
     return suite
 
 def suite_test_post_requests():
