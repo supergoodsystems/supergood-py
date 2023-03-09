@@ -3,3 +3,6 @@ test/db.json
 test/routes.json
 dist/
 src/supergood.egg-info/
+bin/
+lib
+pyvenv.cfg

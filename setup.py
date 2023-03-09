@@ -26,5 +26,8 @@ setuptools.setup(
         'jsonpickle',
         'asyncio',
         'aiohttp',
+        'pytest_httpserver',
+        'Werkzeug',
+        'setuptools',
     ]
 )
