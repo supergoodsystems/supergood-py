@@ -20,7 +20,6 @@ class Api(object):
         self.error_sink_url = urljoin(self.base_url, endpoint)
 
     def post_events(self, payload):
-        print('Not Mocked', payload)
         response = requests.post(self.event_sink_url, json=payload, headers=self.header_options)
         if(response.status_code == 401):
             raise Exception(ERRORS['UNAUTHORIZED'])
