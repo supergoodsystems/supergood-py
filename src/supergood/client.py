@@ -33,7 +33,8 @@ class Client(object):
     def __init__(self,
         client_id=os.getenv('SUPERGOOD_CLIENT_ID'),
         client_secret_id=os.getenv('SUPERGOOD_CLIENT_SECRET'),
-        base_url=os.getenv('SUPERGOOD_BASE_URL')
+        base_url=os.getenv('SUPERGOOD_BASE_URL'),
+        config=None
     ):
         self.base_url = base_url if base_url else DEFAULT_SUPERGOOD_BASE_URL
 
@@ -44,7 +45,7 @@ class Client(object):
                 'Authorization' : 'Basic ' + b64encode(bytes(authorization, 'utf-8')).decode('utf-8')
             }
 
-        self.api = Api(header_options, base_url=self.base_url)
+        self.api = Api(header_options, base_url=self.base_url, config=config)
         self.config = self.api.fetch_config()
         self.log = Logger(self.__class__.__name__, self.config, self.api)
 
@@ -155,6 +156,12 @@ class Client(object):
         self.log.debug('Cleaning up, flushing cache gracefully.')
         self.interval.cancel()
         self.flush_cache(force=True)
+
+    def kill(self, *args) -> None:
+        self.log.debug('Killing process, flushing cache forcefully.')
+        self._request_cache.clear()
+        self._response_cache.clear()
+        self.interval.cancel()
 
     def flush_cache(self, force=False) -> None:
         if(not self.config):

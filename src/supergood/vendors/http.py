@@ -40,7 +40,7 @@ def patch(cache_request, cache_response):
         request_id = str(uuid4())
         setattr(httpConnection, REQUEST_ID_KEY, request_id)
         scheme = 'https' if httpConnection.port == HTTPS_PORT else 'http'
-        url = f'{scheme}://{httpConnection.host}:{httpConnection.port}{path}'
+        url = f'{scheme}://{httpConnection.host}{path}'
         cache_request(request_id, url, method, body, headers)
         return _original_request(httpConnection, method, path, body=body, headers=headers, encode_chunked=encode_chunked, **kwargs)
 
