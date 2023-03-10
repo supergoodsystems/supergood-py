@@ -5,7 +5,7 @@ with open('README.md', 'r') as fh:
 
 setuptools.setup(
     name='supergood',
-    version='1.0.7',
+    version='1.0.8',
     author='Alex Klarfeld',
     description='A Python client for Supergood',
     long_description=long_description,
