@@ -23,6 +23,10 @@ setuptools.setup(
         'pydash',
         'python-dotenv',
         'jsonpickle',
+        'urllib3',
+        'requests',
+        'aiohttp',
+        'uuid4'
     ],
     tests_require=[
         'aiohttp',

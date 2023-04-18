@@ -111,10 +111,6 @@ class Client(object):
                     ERRORS['CACHING_REQUEST']
                 )
 
-
-    # Note for morning Alex
-    # Need response_body, response_headers, response_status and response_status_text as
-    # arguments to be able to patch aiohttp in a similar fashion to the others
     def _cache_response(
         self,
         request_id,
@@ -156,12 +152,6 @@ class Client(object):
         self.log.debug('Cleaning up, flushing cache gracefully.')
         self.interval.cancel()
         self.flush_cache(force=True)
-
-    def kill(self, *args) -> None:
-        self.log.debug('Killing process, flushing cache forcefully.')
-        self._request_cache.clear()
-        self._response_cache.clear()
-        self.interval.cancel()
 
     def flush_cache(self, force=False) -> None:
         if(not self.config):
