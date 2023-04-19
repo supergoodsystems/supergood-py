@@ -13,4 +13,4 @@ bump2version patch
 
 # Build and publish
 python3 -m build
-python3 -m twine upload -u __token__ -p $PYPI_TOKEN $ --repository pypi dist/*
+python3 -m twine upload -u __token__ -p $PYPI_TOKEN --repository pypi dist/*
