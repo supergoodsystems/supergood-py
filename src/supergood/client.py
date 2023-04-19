@@ -45,8 +45,8 @@ class Client(object):
                 'Content-Type' : 'application/json',
                 'Authorization' : 'Basic ' + b64encode(bytes(authorization, 'utf-8')).decode('utf-8')
             }
-        self.config = config
-        self.config.update(DEFAULT_SUPERGOOD_CONFIG)
+        self.config = DEFAULT_SUPERGOOD_CONFIG
+        self.config.update(config)
         self.api = Api(header_options, base_url=self.base_url)
         self.log = Logger(self.__class__.__name__, self.config, self.api)
 
