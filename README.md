@@ -1,19 +1,48 @@
-# Supergood Python Client
+# Python
 
-Monitor the usage, spend and performance of your external API's in 5 minutes flat.
+The Supergood Python client connects Supergood to your Python application. Follow these steps to integrate with the Python client.
 
-1. Sign-up for an account on supergood.ai
-2. Create your organization
-3. Head to the "API Keys" side panel, and generate your CLIENT_ID and CLIENT_SECRET
-4. In your codebase, run `pip -m install supergood`
-5. Add the above CLIENT_ID and CLIENT_SECRET as environment variables in your codebase as `SUPERGOOD_CLIENT_ID` and `SUPERGOOD_CLIENT_SECRET` respectively.
-6. At the top of any file you're making external API calls, add the following two lines:
+## 1. Install the Supergood library
 
+{% code title="Pip" %}
+```bash
+pip install supergood
 ```
-from supergood import Client
+{% endcode %}
+
+## 2. Initialize the Supergood Library
+
+**Environment variables**
+
+Set the environment variables `SUPERGOOD_CLIENT_ID` and `SUPERGOOD_CLIENT_SECRET` using the API keys generated in the [getting started instructions](../../getting-started.md).
+
+Initialize the Supergood client at the root of your application, or anywhere you're making API calls with the following code:
+
+```python
+from Supergood import Client
 
 Client()
 ```
-... and that's it!
 
-Head back to https://dashboard.supergood.ai to start monitoring your external API calls!
+**Passing keys**
+
+You can also pass the API keys in manually without setting environment variables.\
+\
+Replace `<CLIENT_ID>` and `<CLIENT_SECRET>` with the API keys you generated in the [getting started instructions](../../getting-started.md).
+
+```python
+from Supergood import Client
+
+Client(client_id="<CLIENT_ID>", client_secret="<CLIENT_SECRET>")
+```
+
+## 3. Monitor your API calls
+
+You're all set to use Supergood!
+
+Head back to your [dashboard](https://dashboard.supergood.ai) to start monitoring your API calls and receiving reports.
+
+## Links
+
+* [Supergood PyPi Project](https://pypi.org/project/supergood/)
+* [Supergood\_py Source Code](https://github.com/supergoodsystems/supergood-py)
