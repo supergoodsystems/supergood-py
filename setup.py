@@ -7,7 +7,7 @@ setuptools.setup(
     name='supergood',
     version='1.0.8',
     author='Alex Klarfeld',
-    description='A Python client for Supergood',
+    description='The Python client for Supergood',
     long_description=long_description,
     long_description_content_type='text/markdown',
     package=setuptools.find_packages(),
@@ -20,21 +20,23 @@ setuptools.setup(
     py_modules=['supergood'],
     package_dir={'': 'src'},
     install_requires=[
-        'pydash',
-        'python-dotenv',
+        'python-dotenv==1.0.0',
         'jsonpickle',
-        'urllib3',
-        'requests',
-        'aiohttp',
-        'uuid4'
+        'urllib3==1.26.9',
+        'requests==2.28.0',
+        'aiohttp==3.8.4',
+        'pydash==7.0.1',
     ],
-    tests_require=[
-        'aiohttp',
-        'pydash',
-        'pytest',
-        'pytest_httpserver',
-        'python-dotenv',
-        'Werkzeug',
-        'jsonpickle'
-    ],
+    extras_require={
+        'test': [
+            'requests==2.28.0',
+            'urllib3==1.26.9',
+            'pytest==7.2.1',
+            'pytest_httpserver==1.0.6',
+            'python-dotenv==1.0.0',
+            'Werkzeug',
+            'jsonpickle==3.0.1',
+            'pytest-mock==3.10.0'
+        ]
+    },
 )

@@ -6,3 +6,8 @@ src/supergood.egg-info/
 bin/
 lib
 pyvenv.cfg
+.eggs
+__pycache__/
+src/supergood/__pycache__/
+tests/__pycache__/
+src/supergood/vendors/__pycache__/

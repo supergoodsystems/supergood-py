@@ -10,11 +10,11 @@ DEFAULT_SUPERGOOD_BYTE_LIMIT = 500000
 DEFAULT_SUPERGOOD_CONFIG_URL = 'https://dashboard.supergood.ai/api/config/'
 DEFAULT_SUPERGOOD_BASE_URL = 'https://dashboard.supergood.ai/'
 DEFAULT_SUPERGOOD_CONFIG = {
-    'flush_interval': 1000,
-    'event_sink_endpoint': DEFAULT_SUPERGOOD_BASE_URL + 'api/events',
-    'error_sink_endpoint': DEFAULT_SUPERGOOD_BASE_URL + 'api/errors',
-    'keys_to_hash': ['request.body', 'response.body'],
-    'ignored_domains': []
+    'flushInterval': 1000,
+    'eventSinkEndpoint': '/api/events',
+    'errorSinkEndpoint': '/api/errors',
+    'keysToHash': ['request.body', 'response.body'],
+    'ignoredDomains': []
 }
 
 ERRORS = {

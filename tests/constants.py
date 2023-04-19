@@ -1,6 +1,6 @@
 import uuid
 
-URL = "/".join(
+COMPASS_URL = "/".join(
     [
         "https://www.compass.com",
         "homes-for-sale",
@@ -23,7 +23,6 @@ HEADERS = {
             "Chrome/103.0.5060.53 Safari/537.36",
         ]
     ),
-    "accept-encoding": "gzip, deflate, br",
 }
 PAYLOAD = {
     "searchResultId": str(uuid.uuid4()),
