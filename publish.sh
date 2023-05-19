@@ -4,7 +4,7 @@ source .env
 rm -rf dist
 
 # Pull latest README.md from Gitbook
-curl -C - -0 https://raw.githubusercontent.com/supergoodsystems/docs/main/integrate-with-clients/python/README.md > README.md
+curl -C - -0 https://raw.githubusercontent.com/supergoodsystems/docs/287d642c47fb485c9b5d7e4271ec07146a733358/installing-clients/python.md > README.md
 git add README.md
 git commit -m "Update README.md"
 
