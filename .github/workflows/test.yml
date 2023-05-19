@@ -5,6 +5,7 @@ env:
   SUPERGOOD_CLIENT_SECRET: ${{ secrets.STAGING_SUPERGOOD_CLIENT_SECRET }}
   SUPERGOOD_BASE_URL: 'https://staging.dashboard.supergood.ai'
   SUPERGOOD_ORGANIZATION_ID: ${{ vars.SUPERGOOD_ORGANIZATION_ID }}
+  PYTHONWARNINGS: "default"
 on:
   push:
     branches:
