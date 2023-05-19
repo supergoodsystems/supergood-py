@@ -22,15 +22,15 @@ setuptools.setup(
     install_requires=[
         'python-dotenv==1.0.0',
         'jsonpickle',
-        'urllib3==1.26',
-        'requests==2.28.0',
-        'aiohttp==3.8.4',
+        'urllib3>=1.2,<2.0',
+        'requests',
+        'aiohttp',
         'pydash==7.0.1',
     ],
     extras_require={
         'test': [
-            'requests==2.28.0',
-            'urllib3==1.26',
+            'requests',
+            'urllib3>=1.2,<2.0',
             'pytest==7.2.1',
             'pytest_httpserver==1.0.6',
             'python-dotenv==1.0.0',
