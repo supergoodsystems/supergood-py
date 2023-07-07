@@ -25,27 +25,65 @@ def hash_value(input):
         hash.update(encoded)
         return b64encode(hash.digest()).decode('utf-8')
 
-# Hash values from specified keys, or hash if the bodies exceed a byte limit
-def hash_values_from_keys(obj, keys_to_hash, byte_limit=DEFAULT_SUPERGOOD_BYTE_LIMIT):
-    _obj = obj
-    if 'response.body' not in keys_to_hash:
-        payload = get(_obj, 'response.body')
-        payload_size = len(str(payload))
-        if(payload_size >= byte_limit):
-            set_(_obj, 'response.body', hash_value(payload))
+def redact_values(input, included_keys, byte_limit=DEFAULT_SUPERGOOD_BYTE_LIMIT):
+    _input = input
 
-    if 'request.body' not in keys_to_hash:
-        payload = get(_obj, 'request.body')
-        payload_size = len(str(payload))
-        if(payload_size >= byte_limit):
-            set_(_obj, 'request.body', hash_value(payload))
+    payload = get(_input, 'response.body')
+    payload_size = len(str(payload))
 
-    for i in range(len(keys_to_hash)):
-        key_string = keys_to_hash[i]
-        value = get(_obj, key_string)
-        if value:
-            set_(_obj, key_string, hash_value(value))
-    return _obj
+    if(payload_size >= byte_limit):
+        set_(_input, 'response.body', hash_value(payload))
+        return _input
+
+    if not _input:
+        return ''
+
+    if isinstance(_input, list):
+        for i, ele in enumerate(_input):
+            _input[i] = redact_values(ele, included_keys, byte_limit)
+    elif isinstance(_input, dict):
+        for key in _input.keys():
+            if key not in included_keys:
+                _input[key] = redact_values(_input[key], included_keys, byte_limit)
+    elif isinstance(_input, bool):
+        _input = False
+    elif isinstance(_input, str):
+        _input = redact_string(_input)
+    elif isinstance(_input, int):
+        _input = int(redact_numeric(_input))
+    elif isinstance(_input, float):
+        _input = float(redact_numeric(_input))
+    return _input
+
+def redact_string(input):
+    redacted = ""
+    for i in range(len(input)):
+        c = input[i]
+        if c.isupper():
+            redacted += "A"
+        elif c.islower():
+            redacted += "a"
+        elif c.isnumeric():
+            redacted += "1"
+        elif c.isspace():
+            redacted += " "
+        else:
+            redacted += "*"
+    return redacted
+
+def redact_numeric(input):
+    redacted = ""
+    _input = str(input)
+    for i in range(len(_input)):
+        c = _input[i]
+        if c.isnumeric():
+            redacted += "1"
+        elif c == "-":
+            redacted += "-"
+        elif c == '.':
+            redacted += "."
+    return redacted
+
 
 def safe_parse_json(input: str):
     if not input or input == '':

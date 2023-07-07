@@ -13,7 +13,7 @@ DEFAULT_SUPERGOOD_CONFIG = {
     'flushInterval': 1000,
     'eventSinkEndpoint': '/api/events',
     'errorSinkEndpoint': '/api/errors',
-    'keysToHash': ['request.body', 'response.body'],
+    'includedKeys': [],
     'ignoredDomains': []
 }
 

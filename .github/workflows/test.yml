@@ -32,6 +32,6 @@ jobs:
       - name: Run tests
         run: |
           pytest tests/test_core.py
-          pytest tests/test_hashing_entire_body.py
-          pytest tests/test_hashing_single_key.py
+          pytest tests/test_redacting_entire_body.py
+          pytest tests/test_dont_redact_single_key.py
           pytest tests/test_ignored_domains.py
