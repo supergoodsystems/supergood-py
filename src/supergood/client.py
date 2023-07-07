@@ -93,7 +93,7 @@ class Client(object):
                         'method': method,
                         'url': url,
                         'body': redact_values(safe_parse_json(body), self.config['includedKeys']),
-                        'headers': dict(headers),
+                        'headers': redact_values(dict(headers), self.config['includedKeys']),
                         'path': parsed_url.path,
                         'search': parsed_url.query,
                         'requestedAt': now,
@@ -127,7 +127,7 @@ class Client(object):
             if(request):
                 response = {
                     'body': redact_values(safe_parse_json(decoded_body), self.config['includedKeys']),
-                    'headers': dict(response_headers),
+                    'headers': redact_values(dict(response_headers), self.config['includedKeys']),
                     'status': response_status,
                     'statusText': response_status_text,
                     'respondedAt': datetime.now().isoformat(),
