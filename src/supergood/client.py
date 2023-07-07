@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 from .logger import Logger
 from .api import Api
 from .constants import *
-from .helpers import hash_values_from_keys, safe_parse_json, safe_decode
+from .helpers import redact_values, safe_parse_json, safe_decode
 
 from .vendors.requests import patch as patch_requests
 from .vendors.urllib3 import patch as patch_urllib3
@@ -92,7 +92,7 @@ class Client(object):
                         'id': request_id,
                         'method': method,
                         'url': url,
-                        'body': safe_parse_json(body),
+                        'body': redact_values(safe_parse_json(body), self.config['includedKeys']),
                         'headers': dict(headers),
                         'path': parsed_url.path,
                         'search': parsed_url.query,
@@ -126,16 +126,16 @@ class Client(object):
             decoded_body = safe_decode(response_body)
             if(request):
                 response = {
-                    'body': safe_parse_json(decoded_body),
+                    'body': redact_values(safe_parse_json(decoded_body), self.config['includedKeys']),
                     'headers': dict(response_headers),
                     'status': response_status,
                     'statusText': response_status_text,
                     'respondedAt': datetime.now().isoformat(),
                 }
-                self._response_cache[request_id] = hash_values_from_keys({
+                self._response_cache[request_id] = {
                     'request': request['request'],
                     'response': response
-                }, self.config['keysToHash'])
+                }
         except Exception as e:
             exc_info = sys.exc_info()
             error_string = ''.join(traceback.format_exception(*exc_info))
