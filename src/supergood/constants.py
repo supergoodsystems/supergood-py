@@ -7,12 +7,12 @@ SIGNALS = [
 REQUEST_ID_KEY = '_supergood_request_id'
 GZIP_START_BYTES = b'\x1f\x8b'
 DEFAULT_SUPERGOOD_BYTE_LIMIT = 500000
-DEFAULT_SUPERGOOD_CONFIG_URL = 'https://dashboard.supergood.ai/api/config/'
-DEFAULT_SUPERGOOD_BASE_URL = 'https://dashboard.supergood.ai/'
+DEFAULT_SUPERGOOD_CONFIG_URL = 'https://api.supergood.ai/config/'
+DEFAULT_SUPERGOOD_BASE_URL = 'https://api.supergood.ai/'
 DEFAULT_SUPERGOOD_CONFIG = {
     'flushInterval': 1000,
-    'eventSinkEndpoint': '/api/events',
-    'errorSinkEndpoint': '/api/errors',
+    'eventSinkEndpoint': '/events',
+    'errorSinkEndpoint': '/errors',
     'includedKeys': [],
     'ignoredDomains': []
 }
