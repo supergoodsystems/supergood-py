@@ -14,7 +14,8 @@ DEFAULT_SUPERGOOD_CONFIG = {
     'eventSinkEndpoint': '/events',
     'errorSinkEndpoint': '/errors',
     'includedKeys': [],
-    'ignoredDomains': []
+    'ignoredDomains': [],
+    'ignoreRedaction': False,
 }
 
 ERRORS = {

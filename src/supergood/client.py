@@ -92,8 +92,8 @@ class Client(object):
                         'id': request_id,
                         'method': method,
                         'url': url,
-                        'body': redact_values(safe_parse_json(body), self.config['includedKeys']),
-                        'headers': redact_values(dict(headers), self.config['includedKeys']),
+                        'body': redact_values(safe_parse_json(body), self.config['includedKeys'], self.config['ignoreRedaction']),
+                        'headers': redact_values(dict(headers), self.config['includedKeys'], self.config['ignoreRedaction']),
                         'path': parsed_url.path,
                         'search': parsed_url.query,
                         'requestedAt': now,
@@ -126,8 +126,8 @@ class Client(object):
             decoded_body = safe_decode(response_body)
             if(request):
                 response = {
-                    'body': redact_values(safe_parse_json(decoded_body), self.config['includedKeys']),
-                    'headers': redact_values(dict(response_headers), self.config['includedKeys']),
+                    'body': redact_values(safe_parse_json(decoded_body), self.config['includedKeys'], self.config['ignoreRedaction']),
+                    'headers': redact_values(dict(response_headers), self.config['includedKeys'], self.config['ignoreRedaction']),
                     'status': response_status,
                     'statusText': response_status_text,
                     'respondedAt': datetime.now().isoformat(),
