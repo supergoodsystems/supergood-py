@@ -25,7 +25,7 @@ def hash_value(input):
         hash.update(encoded)
         return b64encode(hash.digest()).decode('utf-8')
 
-def redact_values(input, included_keys, byte_limit=DEFAULT_SUPERGOOD_BYTE_LIMIT):
+def redact_values(input, included_keys, ignore_redaction=False, byte_limit=DEFAULT_SUPERGOOD_BYTE_LIMIT):
     _input = input
 
     payload = get(_input, 'response.body')
@@ -38,13 +38,16 @@ def redact_values(input, included_keys, byte_limit=DEFAULT_SUPERGOOD_BYTE_LIMIT)
     if not _input:
         return ''
 
+    if ignore_redaction:
+        return _input
+
     if isinstance(_input, list):
         for i, ele in enumerate(_input):
-            _input[i] = redact_values(ele, included_keys, byte_limit)
+            _input[i] = redact_values(ele, included_keys, ignore_redaction, byte_limit)
     elif isinstance(_input, dict):
         for key in _input.keys():
             if key not in included_keys:
-                _input[key] = redact_values(_input[key], included_keys, byte_limit)
+                _input[key] = redact_values(_input[key], included_keys, ignore_redaction, byte_limit)
     elif isinstance(_input, bool):
         _input = False
     elif isinstance(_input, str):
