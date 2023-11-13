@@ -16,6 +16,7 @@ from uuid import uuid4
 from datetime import datetime
 from base64 import b64encode
 from dotenv import load_dotenv
+from importlib.metadata import version
 from .logger import Logger
 from .api import Api
 from .constants import *
@@ -86,6 +87,11 @@ class Client(object):
         # Don't log requests supergood is making to the event database
         if (host_domain != supergood_base_url and host_domain not in self.config['ignoredDomains']):
             parsed_url = urlparse(url)
+            injected_headers = dict(headers)
+            injected_headers.update({
+                'supergood-client-type': 'supergood-py',
+                'supergood-client-version': version('supergood'),
+            })
             try:
                 request = {
                     'request': {
@@ -93,7 +99,7 @@ class Client(object):
                         'method': method,
                         'url': url,
                         'body': redact_values(safe_parse_json(body), self.config['includedKeys'], self.config['ignoreRedaction']),
-                        'headers': redact_values(dict(headers), self.config['includedKeys'], self.config['ignoreRedaction']),
+                        'headers': redact_values(injected_headers, self.config['includedKeys'], self.config['ignoreRedaction']),
                         'path': parsed_url.path,
                         'search': parsed_url.query,
                         'requestedAt': now,
