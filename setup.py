@@ -32,7 +32,7 @@ setuptools.setup(
             'requests',
             'urllib3>=1.26,<2.0',
             'pytest==7.2.1',
-            'pytest_httpserver==1.0.6',
+            'pytest_httpserver==1.0.8',
             'python-dotenv==1.0.0',
             'Werkzeug',
             'jsonpickle==3.0.1',
