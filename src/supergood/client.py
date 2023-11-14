@@ -44,7 +44,9 @@ class Client(object):
         header_options = {
                 'Accept' : 'application/json, text/plain, */*',
                 'Content-Type' : 'application/json',
-                'Authorization' : 'Basic ' + b64encode(bytes(authorization, 'utf-8')).decode('utf-8')
+                'Authorization' : 'Basic ' + b64encode(bytes(authorization, 'utf-8')).decode('utf-8'),
+                'supergood-api-type' : 'supergood-py',
+                'supergood-api-version' : version('supergood'),
             }
         self.config = DEFAULT_SUPERGOOD_CONFIG
         self.config.update(config)
@@ -87,11 +89,6 @@ class Client(object):
         # Don't log requests supergood is making to the event database
         if (host_domain != supergood_base_url and host_domain not in self.config['ignoredDomains']):
             parsed_url = urlparse(url)
-            injected_headers = dict(headers)
-            injected_headers.update({
-                'supergood-client-type': 'supergood-py',
-                'supergood-client-version': version('supergood'),
-            })
             try:
                 request = {
                     'request': {
@@ -99,7 +96,7 @@ class Client(object):
                         'method': method,
                         'url': url,
                         'body': redact_values(safe_parse_json(body), self.config['includedKeys'], self.config['ignoreRedaction']),
-                        'headers': redact_values(injected_headers, self.config['includedKeys'], self.config['ignoreRedaction']),
+                        'headers': redact_values(dict(headers), self.config['includedKeys'], self.config['ignoreRedaction']),
                         'path': parsed_url.path,
                         'search': parsed_url.query,
                         'requestedAt': now,
