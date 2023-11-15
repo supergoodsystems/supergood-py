@@ -5,7 +5,7 @@ with open('README.md', 'r') as fh:
 
 setuptools.setup(
     name='supergood',
-    version='1.0.20',
+    version='1.0.21',
     author='Alex Klarfeld',
     description='The Python client for Supergood',
     long_description=long_description,
@@ -24,7 +24,7 @@ setuptools.setup(
         'jsonpickle',
         'urllib3>=1.26,<2.0',
         'requests',
-        'aiohttp',
+        'aiohttp==3.9.0b1',
         'pydash==7.0.1',
     ],
     extras_require={
