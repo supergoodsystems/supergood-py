@@ -45,7 +45,7 @@ class Client(object):
                 'Accept' : 'application/json, text/plain, */*',
                 'Content-Type' : 'application/json',
                 'Authorization' : 'Basic ' + b64encode(bytes(authorization, 'utf-8')).decode('utf-8'),
-                'supergood-api-type' : 'supergood-py',
+                'supergood-api' : 'supergood-py',
                 'supergood-api-version' : version('supergood'),
             }
         self.config = DEFAULT_SUPERGOOD_CONFIG
