@@ -24,7 +24,7 @@ setuptools.setup(
         'jsonpickle',
         'urllib3>=1.26,<2.0',
         'requests',
-        'aiohttp==3.9.0b1',
+        'aiohttp',
         'pydash==7.0.1',
     ],
     extras_require={
