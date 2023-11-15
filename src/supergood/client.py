@@ -16,6 +16,7 @@ from uuid import uuid4
 from datetime import datetime
 from base64 import b64encode
 from dotenv import load_dotenv
+from importlib.metadata import version
 from .logger import Logger
 from .api import Api
 from .constants import *
@@ -43,7 +44,9 @@ class Client(object):
         header_options = {
                 'Accept' : 'application/json, text/plain, */*',
                 'Content-Type' : 'application/json',
-                'Authorization' : 'Basic ' + b64encode(bytes(authorization, 'utf-8')).decode('utf-8')
+                'Authorization' : 'Basic ' + b64encode(bytes(authorization, 'utf-8')).decode('utf-8'),
+                'supergood-api' : 'supergood-py',
+                'supergood-api-version' : version('supergood'),
             }
         self.config = DEFAULT_SUPERGOOD_CONFIG
         self.config.update(config)
