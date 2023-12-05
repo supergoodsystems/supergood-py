@@ -57,14 +57,14 @@ class Client(object):
         self.api.set_event_sink_url(self.config['eventSinkEndpoint'])
         self.api.set_error_sink_url(self.config['errorSinkEndpoint'])
 
+        self._request_cache = {}
+        self._response_cache = {}
+
         # Initialize patches here
         patch_requests(self._cache_request, self._cache_response)
         patch_urllib3(self._cache_request, self._cache_response)
         patch_http(self._cache_request, self._cache_response)
         patch_aiohttp(self._cache_request, self._cache_response)
-        self._request_cache = {}
-        self._response_cache = {}
-
         self.interval = self.set_interval(self.flush_cache, self.config['flushInterval'] / 1000)
 
         # On clean exit, or terminated exit - exit gracefully
@@ -72,7 +72,7 @@ class Client(object):
 
     def set_interval(self, func, sec):
         def func_wrapper():
-            self.set_interval(func, sec)
+            self.interval = self.set_interval(func, sec)
             func()
         t = threading.Timer(sec, func_wrapper)
 
@@ -84,10 +84,10 @@ class Client(object):
     def _cache_request(self, request_id, url, method, body, headers):
         host_domain = urlparse(url).hostname
         supergood_base_url = urlparse(self.base_url).hostname
-        now = datetime.now().isoformat()
 
-        # Don't log requests supergood is making to the event database
+        # Ignore ignoredDomains and internal supergood calls to the events URL
         if (host_domain != supergood_base_url and host_domain not in self.config['ignoredDomains']):
+            now = datetime.now().isoformat()
             parsed_url = urlparse(url)
             try:
                 request = {
@@ -125,9 +125,10 @@ class Client(object):
     ) -> None:
         request, response = {}, {}
         try:
+            # Ignored domains are not in the request cache, so this yields None
             request = self._request_cache.pop(request_id, None)
-            decoded_body = safe_decode(response_body)
             if(request):
+                decoded_body = safe_decode(response_body)
                 response = {
                     'body': redact_values(safe_parse_json(decoded_body), self.config['includedKeys'], self.config['ignoreRedaction']),
                     'headers': redact_values(dict(response_headers), self.config['includedKeys'], self.config['ignoreRedaction']),
@@ -153,15 +154,15 @@ class Client(object):
             )
 
     def close(self, *args) -> None:
-        self.log.debug('Cleaning up, flushing cache gracefully.')
+        self.log.debug('Closing client auto-flush, force flushing remaining cache')
         self.interval.cancel()
         self.flush_cache(force=True)
 
     def kill(self, *args) -> None:
-        self.log.debug('Killing process, flushing cache forcefully.')
+        self.log.debug('Killing client auto-flush, deleting remaining cache.')
+        self.interval.cancel()
         self._request_cache.clear()
         self._response_cache.clear()
-        self.interval.cancel()
 
     def flush_cache(self, force=False) -> None:
         if(not self.config):
