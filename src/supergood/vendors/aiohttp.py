@@ -1,8 +1,10 @@
-import aiohttp
 from uuid import uuid4
+
+import aiohttp
 
 from ..constants import REQUEST_ID_KEY
 from ..helpers import safe_decode
+
 
 def patch(cache_request, cache_response):
     _original_request = aiohttp.client.ClientSession._request
@@ -10,8 +12,8 @@ def patch(cache_request, cache_response):
 
     async def _wrap_request(clientSession, method, url, *args, **kwargs):
         request_id = str(uuid4())
-        body = kwargs.get('json', None) or kwargs.get('data', None)
-        headers = kwargs.get('headers', None)
+        body = kwargs.get("json", None) or kwargs.get("data", None)
+        headers = kwargs.get("headers", None)
 
         cache_request(request_id, url, method, body, headers)
 
@@ -27,7 +29,13 @@ def patch(cache_request, cache_response):
         response_status_text = clientResponse.reason
         response_body = await _original_read(clientResponse)
 
-        cache_response(request_id, response_body, response_headers, response_status, response_status_text)
+        cache_response(
+            request_id,
+            response_body,
+            response_headers,
+            response_status,
+            response_status_text,
+        )
         return response_body
 
     aiohttp.client.ClientSession._request = _wrap_request

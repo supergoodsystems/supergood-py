@@ -5,6 +5,7 @@ from ..constants import REQUEST_ID_KEY
 
 HTTPS_PORT = http.client.HTTPS_PORT
 
+
 def patch(cache_request, cache_response):
     _original_read = http.client.HTTPResponse.read
     _original_getresponse = http.client.HTTPConnection.getresponse
@@ -23,7 +24,7 @@ def patch(cache_request, cache_response):
             response_body=response_body,
             response_headers=response_headers,
             response_status=response_status,
-            response_status_text=response_status_text
+            response_status_text=response_status_text,
         )
         return response_body
 
@@ -36,16 +37,30 @@ def patch(cache_request, cache_response):
             pass
         return response_object
 
-    def _wrap_request(httpConnection, method, path, body=None, headers={}, encode_chunked=False, **kwargs):
+    def _wrap_request(
+        httpConnection,
+        method,
+        path,
+        body=None,
+        headers={},
+        encode_chunked=False,
+        **kwargs,
+    ):
         request_id = str(uuid4())
         setattr(httpConnection, REQUEST_ID_KEY, request_id)
-        scheme = 'https' if httpConnection.port == HTTPS_PORT else 'http'
-        url = f'{scheme}://{httpConnection.host}{path}'
+        scheme = "https" if httpConnection.port == HTTPS_PORT else "http"
+        url = f"{scheme}://{httpConnection.host}{path}"
         cache_request(request_id, url, method, body, headers)
-        return _original_request(httpConnection, method, path, body=body, headers=headers, encode_chunked=encode_chunked, **kwargs)
+        return _original_request(
+            httpConnection,
+            method,
+            path,
+            body=body,
+            headers=headers,
+            encode_chunked=encode_chunked,
+            **kwargs,
+        )
 
     http.client.HTTPResponse.read = _wrap_read
     http.client.HTTPConnection.getresponse = _wrap_getresponse
     http.client.HTTPConnection.request = _wrap_request
-
-

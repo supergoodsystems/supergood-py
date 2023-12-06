@@ -1,7 +1,9 @@
-import urllib3
 import http
 
+import urllib3
+
 from ..constants import REQUEST_ID_KEY
+
 
 def patch(cache_request, cache_response):
     _original_read_chunked = urllib3.HTTPResponse.read_chunked
@@ -17,14 +19,13 @@ def patch(cache_request, cache_response):
 
         request_id = getattr(response_object, REQUEST_ID_KEY)
         response_headers = _original_getheaders(response_object)
-        response_body = b''.join(response_bytes)
+        response_body = b"".join(response_bytes)
         cache_response(
             request_id=request_id,
             response_body=response_body,
             response_headers=response_headers,
             response_status=response_object.status,
-            response_status_text=response_object.reason
+            response_status_text=response_object.reason,
         )
 
     urllib3.HTTPResponse.read_chunked = _wrap_read_chunked
-
