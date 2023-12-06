@@ -140,13 +140,8 @@ class Client(object):
         try:
             # Ignored domains are not in the request cache, so this yields None
             request = self._request_cache.pop(request_id, None)
-<<<<<<< HEAD
-            if(request):
-                decoded_body = safe_decode(response_body)
-=======
-            decoded_body = safe_decode(response_body)
             if request:
->>>>>>> 152846c (linting and import sorting on all non-test source code)
+                decoded_body = safe_decode(response_body)
                 response = {
                     "body": redact_values(
                         safe_parse_json(decoded_body),
@@ -180,21 +175,13 @@ class Client(object):
             )
 
     def close(self, *args) -> None:
-<<<<<<< HEAD
-        self.log.debug('Closing client auto-flush, force flushing remaining cache')
-=======
-        self.log.debug("Cleaning up, flushing cache gracefully.")
->>>>>>> 152846c (linting and import sorting on all non-test source code)
+        self.log.debug("Closing client auto-flush, force flushing remaining cache")
         self.interval.cancel()
         self.flush_cache(force=True)
 
     def kill(self, *args) -> None:
-<<<<<<< HEAD
-        self.log.debug('Killing client auto-flush, deleting remaining cache.')
+        self.log.debug("Killing client auto-flush, deleting remaining cache.")
         self.interval.cancel()
-=======
-        self.log.debug("Killing process, flushing cache forcefully.")
->>>>>>> 152846c (linting and import sorting on all non-test source code)
         self._request_cache.clear()
         self._response_cache.clear()
 
