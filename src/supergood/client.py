@@ -1,61 +1,59 @@
 #!/usr/bin/env python3
 
-import http.client
-import urllib3
-import signal
+import atexit
 import os
 import sys
-import traceback
-import jsonpickle
-import json
-import atexit
 import threading
-
+import traceback
+from base64 import b64encode
+from datetime import datetime
+from importlib.metadata import version
 from urllib.parse import urlparse
 from uuid import uuid4
-from datetime import datetime
-from base64 import b64encode
+
+import jsonpickle
 from dotenv import load_dotenv
-from importlib.metadata import version
-from .logger import Logger
+
 from .api import Api
 from .constants import *
-from .helpers import redact_values, safe_parse_json, safe_decode
-
+from .helpers import redact_values, safe_decode, safe_parse_json
+from .logger import Logger
+from .vendors.aiohttp import patch as patch_aiohttp
+from .vendors.http import patch as patch_http
 from .vendors.requests import patch as patch_requests
 from .vendors.urllib3 import patch as patch_urllib3
-from .vendors.http import patch as patch_http
-from .vendors.aiohttp import patch as patch_aiohttp
 
 load_dotenv()
 
-class Client(object):
 
-    def __init__(self,
-        client_id=os.getenv('SUPERGOOD_CLIENT_ID'),
-        client_secret_id=os.getenv('SUPERGOOD_CLIENT_SECRET'),
-        base_url=os.getenv('SUPERGOOD_BASE_URL'),
-        config={}
+class Client(object):
+    def __init__(
+        self,
+        client_id=os.getenv("SUPERGOOD_CLIENT_ID"),
+        client_secret_id=os.getenv("SUPERGOOD_CLIENT_SECRET"),
+        base_url=os.getenv("SUPERGOOD_BASE_URL"),
+        config={},
     ):
         self.base_url = base_url if base_url else DEFAULT_SUPERGOOD_BASE_URL
 
-        authorization = f'{client_id}:{client_secret_id}'
+        authorization = f"{client_id}:{client_secret_id}"
 
         header_options = {
-                'Accept' : 'application/json, text/plain, */*',
-                'Content-Type' : 'application/json',
-                'Authorization' : 'Basic ' + b64encode(bytes(authorization, 'utf-8')).decode('utf-8'),
-                'supergood-api' : 'supergood-py',
-                'supergood-api-version' : version('supergood'),
-            }
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "Authorization": "Basic "
+            + b64encode(bytes(authorization, "utf-8")).decode("utf-8"),
+            "supergood-api": "supergood-py",
+            "supergood-api-version": version("supergood"),
+        }
         self.config = DEFAULT_SUPERGOOD_CONFIG
         self.config.update(config)
         self.api = Api(header_options, base_url=self.base_url)
         self.log = Logger(self.__class__.__name__, self.config, self.api)
 
         self.api.set_logger(self.log)
-        self.api.set_event_sink_url(self.config['eventSinkEndpoint'])
-        self.api.set_error_sink_url(self.config['errorSinkEndpoint'])
+        self.api.set_event_sink_url(self.config["eventSinkEndpoint"])
+        self.api.set_error_sink_url(self.config["errorSinkEndpoint"])
 
         self._request_cache = {}
         self._response_cache = {}
@@ -65,7 +63,10 @@ class Client(object):
         patch_urllib3(self._cache_request, self._cache_response)
         patch_http(self._cache_request, self._cache_response)
         patch_aiohttp(self._cache_request, self._cache_response)
-        self.interval = self.set_interval(self.flush_cache, self.config['flushInterval'] / 1000)
+
+        self.interval = self.set_interval(
+            self.flush_cache, self.config["flushInterval"] / 1000
+        )
 
         # On clean exit, or terminated exit - exit gracefully
         atexit.register(self.close)
@@ -74,6 +75,7 @@ class Client(object):
         def func_wrapper():
             self.interval = self.set_interval(func, sec)
             func()
+
         t = threading.Timer(sec, func_wrapper)
 
         # Function will exit and end when script ends
@@ -85,34 +87,45 @@ class Client(object):
         host_domain = urlparse(url).hostname
         supergood_base_url = urlparse(self.base_url).hostname
 
-        # Ignore ignoredDomains and internal supergood calls to the events URL
-        if (host_domain != supergood_base_url and host_domain not in self.config['ignoredDomains']):
+        # Check that we should cache the request
+        if (
+            host_domain != supergood_base_url  # dont cache calls to SG
+            and host_domain not in self.config["ignoredDomains"]
+        ):
             now = datetime.now().isoformat()
             parsed_url = urlparse(url)
             try:
                 request = {
-                    'request': {
-                        'id': request_id,
-                        'method': method,
-                        'url': url,
-                        'body': redact_values(safe_parse_json(body), self.config['includedKeys'], self.config['ignoreRedaction']),
-                        'headers': redact_values(dict(headers), self.config['includedKeys'], self.config['ignoreRedaction']),
-                        'path': parsed_url.path,
-                        'search': parsed_url.query,
-                        'requestedAt': now,
+                    "request": {
+                        "id": request_id,
+                        "method": method,
+                        "url": url,
+                        "body": redact_values(
+                            safe_parse_json(body),
+                            self.config["includedKeys"],
+                            self.config["ignoreRedaction"],
+                        ),
+                        "headers": redact_values(
+                            dict(headers),
+                            self.config["includedKeys"],
+                            self.config["ignoreRedaction"],
+                        ),
+                        "path": parsed_url.path,
+                        "search": parsed_url.query,
+                        "requestedAt": now,
                     }
                 }
                 self._request_cache[request_id] = request
             except Exception as e:
                 exc_info = sys.exc_info()
-                error_string = ''.join(traceback.format_exception(*exc_info))
+                error_string = "".join(traceback.format_exception(*exc_info))
                 self.log.error(
                     {
-                        'request': jsonpickle.encode(request, unpicklable=False),
-                        'config': jsonpickle.encode(self.config , unpicklable=False)
+                        "request": jsonpickle.encode(request, unpicklable=False),
+                        "config": jsonpickle.encode(self.config, unpicklable=False),
                     },
                     error_string,
-                    ERRORS['CACHING_REQUEST']
+                    ERRORS["CACHING_REQUEST"],
                 )
 
     def _cache_response(
@@ -121,82 +134,93 @@ class Client(object):
         response_body,
         response_headers,
         response_status,
-        response_status_text
+        response_status_text,
     ) -> None:
         request, response = {}, {}
         try:
             # Ignored domains are not in the request cache, so this yields None
             request = self._request_cache.pop(request_id, None)
-            if(request):
+            if request:
                 decoded_body = safe_decode(response_body)
                 response = {
-                    'body': redact_values(safe_parse_json(decoded_body), self.config['includedKeys'], self.config['ignoreRedaction']),
-                    'headers': redact_values(dict(response_headers), self.config['includedKeys'], self.config['ignoreRedaction']),
-                    'status': response_status,
-                    'statusText': response_status_text,
-                    'respondedAt': datetime.now().isoformat(),
+                    "body": redact_values(
+                        safe_parse_json(decoded_body),
+                        self.config["includedKeys"],
+                        self.config["ignoreRedaction"],
+                    ),
+                    "headers": redact_values(
+                        dict(response_headers),
+                        self.config["includedKeys"],
+                        self.config["ignoreRedaction"],
+                    ),
+                    "status": response_status,
+                    "statusText": response_status_text,
+                    "respondedAt": datetime.now().isoformat(),
                 }
                 self._response_cache[request_id] = {
-                    'request': request['request'],
-                    'response': response
+                    "request": request["request"],
+                    "response": response,
                 }
         except Exception as e:
             exc_info = sys.exc_info()
-            error_string = ''.join(traceback.format_exception(*exc_info))
+            error_string = "".join(traceback.format_exception(*exc_info))
             self.log.error(
                 {
-                    'request': jsonpickle.encode(request, unpicklable=False),
-                    'response': jsonpickle.encode(response, unpicklable=False),
-                    'config': jsonpickle.encode(self.config , unpicklable=False)
+                    "request": jsonpickle.encode(request, unpicklable=False),
+                    "response": jsonpickle.encode(response, unpicklable=False),
+                    "config": jsonpickle.encode(self.config, unpicklable=False),
                 },
                 error_string,
-                ERRORS['CACHING_RESPONSE']
+                ERRORS["CACHING_RESPONSE"],
             )
 
     def close(self, *args) -> None:
-        self.log.debug('Closing client auto-flush, force flushing remaining cache')
+        self.log.debug("Closing client auto-flush, force flushing remaining cache")
         self.interval.cancel()
         self.flush_cache(force=True)
 
     def kill(self, *args) -> None:
-        self.log.debug('Killing client auto-flush, deleting remaining cache.')
+        self.log.debug("Killing client auto-flush, deleting remaining cache.")
         self.interval.cancel()
         self._request_cache.clear()
         self._response_cache.clear()
 
     def flush_cache(self, force=False) -> None:
-        if(not self.config):
-            self.log.info('Config not loaded yet, skipping flush')
+        if not self.config:
+            self.log.info("Config not loaded yet, skipping flush")
             return
 
         response_keys = list(self._response_cache.keys())
         request_keys = list(self._request_cache.keys())
         # If there are no responses in cache, just exit
-        if(len(response_keys) == 0 and not force):
+        if len(response_keys) == 0 and not force:
             return
 
         # If we're forcing a flush but there's nothing in the cache, exit here
-        if(force and len(response_keys) == 0 and len(request_keys) == 0):
+        if force and len(response_keys) == 0 and len(request_keys) == 0:
             return
 
         data = list(self._response_cache.values())
 
-        if(force):
+        if force:
             data += list(self._request_cache.values())
         try:
-            self.log.debug(f'Flushing {len(data)} items')
+            self.log.debug(f"Flushing {len(data)} items")
             self.api.post_events(data)
         except Exception as e:
             exc_info = sys.exc_info()
-            error_string = ''.join(traceback.format_exception(*exc_info))
+            error_string = "".join(traceback.format_exception(*exc_info))
             self.log.error(
                 {
-                    'data': jsonpickle.encode(data, unpicklable=False),
-                    'config': jsonpickle.encode(self.config, unpicklable=False),
-                }, error_string, ERRORS['POSTING_EVENTS'])
+                    "data": jsonpickle.encode(data, unpicklable=False),
+                    "config": jsonpickle.encode(self.config, unpicklable=False),
+                },
+                error_string,
+                ERRORS["POSTING_EVENTS"],
+            )
         finally:
             for response_key in response_keys:
                 self._response_cache.pop(response_key, None)
-            if(force):
+            if force:
                 for request_key in request_keys:
                     self._request_cache.pop(request_key, None)

@@ -1,5 +1,6 @@
 from requests import Session
 
+
 def patch(cache_request, cache_response):
     _original_send = Session.send
 
@@ -10,4 +11,3 @@ def patch(cache_request, cache_response):
         return _original_send(_self, request, **kwargs)
 
     Session.send = _wrap_send
-
