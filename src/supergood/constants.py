@@ -11,8 +11,10 @@ DEFAULT_SUPERGOOD_CONFIG_URL = "https://api.supergood.ai/config/"
 DEFAULT_SUPERGOOD_BASE_URL = "https://api.supergood.ai/"
 DEFAULT_SUPERGOOD_CONFIG = {
     "flushInterval": 1000,
+    "configInterval": 10000,
     "eventSinkEndpoint": "/events",
     "errorSinkEndpoint": "/errors",
+    "configPullEndpoint": "/config",
     "includedKeys": [],
     "ignoredDomains": [],
     "ignoreRedaction": False,
@@ -27,6 +29,7 @@ ERRORS = {
     "FETCHING_CONFIG": "Error Fetching Config",
     "WRITING_TO_DISK": "Error writing to disk",
     "TEST_ERROR": "Test Error for Testing Purposes",
+    "UNINITIALIZED": "Client not properly initialized",
     "UNAUTHORIZED": "Unauthorized: Invalid Client ID or Secret. Exiting.",
     "NO_CLIENT_ID": "No Client ID Provided, set SUPERGOOD_CLIENT_ID or pass it as an argument",
     "NO_CLIENT_SECRET": "No Client Secret Provided, set SUPERGOOD_CLIENT_SECRET or pass it as an argument",
