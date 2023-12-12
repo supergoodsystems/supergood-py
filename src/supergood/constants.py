@@ -15,7 +15,6 @@ DEFAULT_SUPERGOOD_CONFIG = {
     "eventSinkEndpoint": "/events",
     "errorSinkEndpoint": "/errors",
     "configPullEndpoint": "/config",
-    "includedKeys": [],
     "ignoredDomains": [],
     "ignoreRedaction": False,
 }
@@ -33,4 +32,5 @@ ERRORS = {
     "UNAUTHORIZED": "Unauthorized: Invalid Client ID or Secret. Exiting.",
     "NO_CLIENT_ID": "No Client ID Provided, set SUPERGOOD_CLIENT_ID or pass it as an argument",
     "NO_CLIENT_SECRET": "No Client Secret Provided, set SUPERGOOD_CLIENT_SECRET or pass it as an argument",
+    "UNKNOWN": "Client received unexpected value",
 }

@@ -2,13 +2,16 @@ import gzip
 import hashlib
 import json
 from base64 import b64encode
+from itertools import chain
+from sys import getsizeof
 from urllib.parse import urlparse
 
 from pydash import get, set_, unset
 from pydash.arrays import flatten
 from tldextract import extract
 
-from .constants import DEFAULT_SUPERGOOD_BYTE_LIMIT, GZIP_START_BYTES
+from .constants import DEFAULT_SUPERGOOD_BYTE_LIMIT, ERRORS, GZIP_START_BYTES
+from .remote_config import get_endpoint_from_config
 
 
 def hash_value(input):
@@ -21,203 +24,205 @@ def hash_value(input):
     return b64encode(hash.digest()).decode("utf-8")
 
 
-def action_key(data, action):
-    match action.lower():
-        case "readact":
-            return hash_value(data)
-        case "hash":
-            return f"<redacted>:{type(data).__name__}:{len(data)}"
-
-
-def deep_set_(input, keypath, action):
+def get_with_exists(obj, key) -> tuple[any, bool]:
     """
-    input: a request or response json blob
+    obj: a dictionary object, usually a request/response
+    key: A keypath to test, in the form key1.key2[0].key3
+
+    If the key path is valid, returns
+    (value, True)
+    otherwise returns
+    (None, False)
+    """
+    dummy = object()
+    test = get(obj, key, dummy)
+    # If we get the default value back, the keypath does not exist
+    if test != dummy:
+        return test, True
+    else:
+        return None, False
+
+
+def recursive_size(obj, seen=set(), include_overhead=False):
+    """
+    NB: NOT a perfect recursive sizeof. Expects it's operating on a JSON response
+    By default does NOT include the overhead of dict overhead, just the sizes of keys and values
+    """
+    size = getsizeof(obj)
+    obj_id = id(obj)
+    if obj_id in seen:
+        return 0
+    seen.add(obj_id)
+    if isinstance(obj, dict):
+        if not include_overhead:
+            size = 0
+        size = sum([recursive_size(v, seen) for v in obj.values()])
+        size += sum([recursive_size(k, seen) for k in obj.keys()])
+    return size
+
+
+def action_key(data, action):
+    """
+    Performs the action defined in `action` on `data`
+    Currently supports `redact` and `hash`. `ignore` handled upstream
+
+    NB: The input is assumed to be a JSON blob. Only supports JSON types, not generic objects
+    """
+    match action.lower():
+        case "hash":
+            return hash_value(data)
+        case "redact":
+            typ = type(data).__name__
+            match typ:
+                case "NoneType":
+                    return f"null:0"
+                case "bool":
+                    return f"boolean:1"
+                case "str":
+                    return f"string:{len(data)}"
+                case "int":
+                    return f"integer:{len(str(data))}"
+                case "float":
+                    return f"float:{len(str(data))}"
+                case "list":
+                    return f"array:{len(data)}"
+                case "dict":
+                    return f"object:{recursive_size(data)}"
+                case _:
+                    # It should be a json type, fail
+                    raise Exception(ERRORS["UNKNOWN"])
+
+
+def deep_redact_(input, keypath, action):
+    """
+    input: a request or response json blob to be redacted
     keypath: a keypath operating on an array, i.e. containing []
-    action: the action to take on that value
+    action: the action to take on that values at that keypath
 
-    This function extends the `set_` function from pydash to operate
-     on every entry in a series of potentially nested arrays
+    To redact a key that is present in one or many response array objects, e.g.
+    `response.body.added[].payment_instruments[].number`
+    you have to iterate over both (all) arrays to collect all the keys
+    that need to be redacted.
 
-    Given input
-    {
-    "added":[
-        {"type": "payment_instruments",
-        "items": [
-            {"type": "debit", "number": 12345},
-            {"type": "credit", "number": 56789}
-            {"type": "debit", "number": }
-        ]
-        },
-        {"type": "bank_accounts",
-        "items": [
-            {"type": "savings", "number": 12345},
-            {"type": "checking", "number": 54321}
-        ]
-        }
-    ]
-    }
-    And key: `added[].items[].number`
-    Will iterate through all (added, items) combinations to set the `number` field
+    This function redacts (removes) all `keypath` keys in-place on `input`
+    and returns metadata about each extracted key, which Supergood uses for schema
+    anomaly detection.
     """
     all_keys = []
     for key_segment in keypath.split("."):
-        print(f"this key segment {key_segment}")
         if key_segment.endswith("[]"):
             key_name = key_segment[0:-2]
-            print(f"key name: {key_name}")
-            if len(all_keys) == 0:
-                arr = get(input, key_name)
-                print(f"got array {arr}")
+            new_keys = []
+            for keypart in all_keys:
+                arr = get(input, ".".join([keypart, key_name]))
+                if arr is None:
+                    # Key does not exist
+                    continue
                 for i in range(len(arr)):
-                    all_keys += [key_name + f"[{i}]"]
-            else:
-                new_keys = []
-                for keypart in all_keys:
-                    arr = get(input, ".".join([keypart, key_name]))
-                    for i in range(len(arr)):
-                        new_keys.append(".".join([keypart, (key_name + f"[{i}]")]))
-                all_keys = new_keys
-            print(f"all keys: {all_keys}")
+                    new_keys.append(".".join([keypart, (key_name + f"[{i}]")]))
+            all_keys = new_keys
         else:
-            all_keys = list(map(lambda k: ".".join([k, key_segment]), all_keys))
-    print(all_keys)
-    print(f"before: {input}")
+            if len(all_keys) == 0:
+                all_keys.append(key_segment)
+            else:
+                all_keys = list(map(lambda k: ".".join([k, key_segment]), all_keys))
+
+    # Invariant: he first two elements of any keypath will always be
+    #  of the form '{request|response}.{body|headers}'
+    #  however for standardization we need to transform that to a single key
+    #  '{request|response}{Body|Headers}'
+    metadata = {}
     for key in all_keys:
+        keysplit = key.split(".")
+        actual_key = ".".join([(keysplit[0] + keysplit[1].capitalize())] + keysplit[2:])
         if action.lower() == "ignore":
+            metadata[actual_key] = None
             unset(input, key)
         else:
-            set_(input, key, action_key(get(input, key), action))
-    print(f"after: {input}")
+            metadata[actual_key] = action_key(get(input, key), action)
+            set_(input, key, None)
+    return metadata
 
 
 def redact_values(
     input_array,
     remote_config,
-    logger=None,
     ignore_redaction=False,
 ):
+    """
+    input_array: a dictionary, representing a `request, reponse` pair
+    remote_config: the SG remote config
+
+    """
     remove_indices = []
     if ignore_redaction:
+        # add an empty metadata object to each one and return
+        for i in range(len(input_array)):
+            input_array[i].update({"metadata": {}})
         return input_array
     for index, data in enumerate(input_array):
-        print(f"on item {index}")
-        url_extract = extract(data["request"]["url"])
-        print(f"looking for {url_extract.fqdn}")
-        for vendor_domain, endpoint_configs in remote_config.items():
-            print(f"comparing to {vendor_domain}")
-            if vendor_domain in url_extract.fqdn:
-                # Matched vendor, check if this is a known endpoint
-                print("matched, checking endpoints")
-                for endpoint in endpoint_configs:
-                    print(f"checking endpoint {endpoint}")
-                    to_search = ""
-                    print(f"pulling object from {endpoint.location}")
-                    match endpoint.location:
-                        case "path":
-                            to_search = data["request"].get("path")
-                        case "url":
-                            to_search = data["request"].get("url")
-                        case "domain":
-                            to_search = url_extract.registered_domain
-                        case "subdomain":
-                            to_search = url_extract.subdomain
-                        case "request_headers":
-                            to_search = str(data["request"]["headers"])
-                        case "request_body":
-                            to_search = str(data["request"]["body"])
-                    print(f"found {to_search}, applying regex {endpoint.regex}")
-                    if endpoint.regex.search(to_search):
-                        print("regex match, actioning")
-                        # Matched endpoint. Check ignore and then sensitive keys
-                        if endpoint.action.lower() == "ignore":
-                            print("endpoint action is ignore, marking for removal")
-                            remove_indices.append(index)
-                            break
-                        print("checking sensitive keys")
-                        for key in endpoint.sensitive_keys:
-                            print(f"checking key {key}")
-                            key_split = key.key_path.split(".")
-                            if key_split[0].startswith("response") and not data.get(
-                                "response"
-                            ):
-                                # None/empty response object, move on
-                                continue
-
-                            parent_obj = None
-                            match key_split[0]:
-                                case "requestBody":
-                                    parent_obj = data["request"]
-                                    keypath = ".".join(["body"] + key_split[1:])
-                                case "requestHeaders":
-                                    parent_obj = data["request"]
-                                    keypath = ".".join(["headers"] + key_split[1:])
-                                case "responseBody":
-                                    parent_obj = data["response"]
-                                    keypath = ".".join(["body"] + key_split[1:])
-                                case "responseHeaders":
-                                    parent_obj = data["response"]
-                                    keypath = ".".join(["headers"] + key_split[1:])
-                            if parent_obj:
-                                if "[]" in keypath:
-                                    # Keys associated with arrays require iterating
-                                    deep_set_(parent_obj, keypath, key.action.lower())
-                                else:
-                                    match key.action.lower():
-                                        case "ignore":
-                                            unset(
-                                                parent_obj,
-                                                keypath,
-                                            )
-                                        case "redact" | "hash":
-                                            set_(
-                                                parent_obj,
-                                                keypath,
-                                                action_key(
-                                                    get(parent_obj, keypath),
-                                                    key.action.lower(),
-                                                ),
-                                            )
-
-                break  # Once we've matched a vendor and actioned on it we can break out
-    if remove_indices:
-        return list(filter(lambda ind, _: ind not in remove_indices, enumerate(data)))
-    else:
-        return data
-
-
-def redact_string(input):
-    redacted = ""
-    for i in range(len(input)):
-        c = input[i]
-        if c.isupper():
-            redacted += "A"
-        elif c.islower():
-            redacted += "a"
-        elif c.isnumeric():
-            redacted += "1"
-        elif c.isspace():
-            redacted += " "
+        metadata = {}
+        endpoint = get_endpoint_from_config(
+            remote_config,
+            url=data["request"].get("url"),
+            request_body=data["request"]["body"],
+            request_headers=data["request"]["headers"],
+        )
+        if endpoint:
+            # Matched endpoint. Check ignore and then sensitive keys
+            if endpoint.action.lower() == "ignore":
+                remove_indices.append(index)
+                break
+            for key in endpoint.sensitive_keys:
+                if key.key_path.startswith("response") and not data.get("response"):
+                    continue
+                key_split = key.key_path.split(".")
+                match key_split[0]:
+                    case "requestBody":
+                        keypath = ".".join(["request", "body"] + key_split[1:])
+                    case "requestHeaders":
+                        keypath = ".".join(["request", "headers"] + key_split[1:])
+                    case "responseBody":
+                        keypath = ".".join(["response", "body"] + key_split[1:])
+                    case "responseHeaders":
+                        keypath = ".".join(["response", "headers"] + key_split[1:])
+                    case _:
+                        raise Exception("unknown keypath")
+                if "[]" in keypath:
+                    # Keys within an array require iterative redaction
+                    redactions = deep_redact_(data, keypath, key.action.lower())
+                    metadata.update(redactions)
+                else:
+                    item, exists = get_with_exists(data, keypath)
+                    if not exists:
+                        # Key not present, move on
+                        continue
+                    match key.action.lower():
+                        case "ignore":
+                            metadata[key.key_path] = None
+                            unset(
+                                data,
+                                keypath,
+                            )
+                        case "redact" | "hash":
+                            val = action_key(item, key.action)
+                            metadata[key.key_path] = val
+                            set_(data, keypath, None)
+        if metadata:
+            data["metadata"] = {"sensitiveKeys": metadata}
         else:
-            redacted += "*"
-    return redacted
+            data["metadata"] = {}
 
-
-def redact_numeric(input):
-    redacted = ""
-    _input = str(input)
-    for i in range(len(_input)):
-        c = _input[i]
-        if c.isnumeric():
-            redacted += "1"
-        elif c == "-":
-            redacted += "-"
-        elif c == ".":
-            redacted += "."
-    return redacted
+    if remove_indices:
+        return list(
+            filter(lambda ind, _: ind not in remove_indices, enumerate(input_array))
+        )
+    else:
+        return input_array
 
 
 def safe_parse_json(input: str):
-    if not input or input == "":
+    if not input:
         return ""
     try:
         return json.loads(input)

@@ -1,7 +1,7 @@
 import http.client
 from uuid import uuid4
 
-from ..constants import REQUEST_ID_KEY
+from supergood.constants import REQUEST_ID_KEY
 
 HTTPS_PORT = http.client.HTTPS_PORT
 

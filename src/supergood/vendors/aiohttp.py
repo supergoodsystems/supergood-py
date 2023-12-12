@@ -2,8 +2,8 @@ from uuid import uuid4
 
 import aiohttp
 
-from ..constants import REQUEST_ID_KEY
-from ..helpers import safe_decode
+from supergood.constants import REQUEST_ID_KEY
+from supergood.helpers import safe_decode
 
 
 def patch(cache_request, cache_response):

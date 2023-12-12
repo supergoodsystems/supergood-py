@@ -13,16 +13,20 @@ import jsonpickle
 from dotenv import load_dotenv
 from tldextract import extract
 
-from .api import Api
-from .constants import *
-from .helpers import redact_values, safe_decode, safe_parse_json
-from .logger import Logger
-from .remote_config import parse_remote_config_json
-from .repeating_thread import RepeatingThread
-from .vendors.aiohttp import patch as patch_aiohttp
-from .vendors.http import patch as patch_http
-from .vendors.requests import patch as patch_requests
-from .vendors.urllib3 import patch as patch_urllib3
+from supergood.api import Api
+from supergood.constants import *
+from supergood.helpers import redact_values, safe_decode, safe_parse_json
+from supergood.logger import Logger
+from supergood.remote_config import (
+    get_endpoint_from_config,
+    get_endpoint_test_val,
+    parse_remote_config_json,
+)
+from supergood.repeating_thread import RepeatingThread
+from supergood.vendors.aiohttp import patch as patch_aiohttp
+from supergood.vendors.http import patch as patch_http
+from supergood.vendors.requests import patch as patch_requests
+from supergood.vendors.urllib3 import patch as patch_urllib3
 
 load_dotenv()
 
@@ -34,6 +38,7 @@ class Client(object):
         client_secret_id=os.getenv("SUPERGOOD_CLIENT_SECRET"),
         base_url=os.getenv("SUPERGOOD_BASE_URL"),
         config={},
+        auto=True,
     ):
         self.base_url = base_url if base_url else DEFAULT_SUPERGOOD_BASE_URL
 
@@ -54,6 +59,8 @@ class Client(object):
         self.remote_config_thread = RepeatingThread(
             self.get_config, self.base_config["configInterval"] / 1000
         )
+        if auto:
+            self.remote_config_thread.start()
 
         self.api = Api(header_options, self.base_url)
         self.log = Logger(self.__class__.__name__, self.base_config, self.api)
@@ -75,30 +82,27 @@ class Client(object):
         self.flush_thread = RepeatingThread(
             self.flush_cache, self.base_config["flushInterval"] / 1000
         )
+        if auto:
+            self.flush_thread.start()
 
         # On clean exit, or terminated exit - exit gracefully
         atexit.register(self.close)
 
-    def _get_test_val(
-        self,
-        location,
-        url=None,
-        request_body=None,
-        request_headers=None,
-    ):
-        match location:
-            case "path":
-                return urlparse(url).path
-            case "url":
-                return url
-            case "domain":
-                return extract(url).domain
-            case "subdomain":
-                return extract(url).subdomain
-            case "request_headers":
-                return str(request_headers)
-            case "request_body":
-                to_search = str(request_body)
+    def _log_error_traceback(self, error, request=None, response=None):
+        data = {}
+        if request:
+            data["request"] = jsonpickle.encode(request, unpicklable=False)
+        if response:
+            data["response"] = (jsonpickle.encode(response, unpicklable=False),)
+        data["config"] = jsonpickle.encode(self.base_config, unpicklable=False)
+        exc_info = sys.exc_info()
+        error_string = "".join(traceback.format_exception(*exc_info))
+        del exc_info  # See garbage collection warning on sys.exc_info()
+        self.log.error(
+            error,
+            data,
+            error_string,
+        )
 
     def _should_ignore(
         self,
@@ -106,8 +110,6 @@ class Client(object):
         url=None,
         request_body=None,
         request_headers=None,
-        response_body=None,
-        response_headers=None,
     ):
         supergood_base_url = urlparse(self.base_url).hostname
         # If we haven't fetched the remote config yet, always ignore
@@ -117,21 +119,36 @@ class Client(object):
             or host_domain in self.base_config["ignoredDomains"]
         ):
             return True
-        for vendor_domain in self.remote_config:
-            if vendor_domain in host_domain:
-                # Matched vendor, check for endpoint match
-                for endpoint in self.remote_config[vendor_domain].endpoints:
-                    test = _get_test_val(endpoint.location, url=url)
+
+        endpoint = get_endpoint_from_config(
+            self.remote_config,
+            url=url,
+            request_body=request_body,
+            request_headers=request_headers,
+        )
+        if endpoint and endpoint.regex.search(
+            get_endpoint_test_val(
+                location=endpoint.location,
+                url=url,
+                request_body=request_body,
+                request_headers=request_headers,
+            )
+        ):
+            return endpoint.action.lower() == "ignore"
+        else:
+            # Unless an endpoint is marked ignore, assume allow
+            return False
 
     def _cache_request(self, request_id, url, method, body, headers):
         host_domain = urlparse(url).hostname
 
         # Check that we should cache the request
-        if self._should_ignore(
+        if not self._should_ignore(
             host_domain, url=url, request_body=body, request_headers=headers
         ):
             now = datetime.now().isoformat()
             parsed_url = urlparse(url)
+            request = {}
             try:
                 request = {
                     "request": {
@@ -146,19 +163,8 @@ class Client(object):
                     }
                 }
                 self._request_cache[request_id] = request
-            except Exception as e:
-                exc_info = sys.exc_info()
-                error_string = "".join(traceback.format_exception(*exc_info))
-                self.log.error(
-                    {
-                        "request": jsonpickle.encode(request, unpicklable=False),
-                        "config": jsonpickle.encode(
-                            self.base_config, unpicklable=False
-                        ),
-                    },
-                    error_string,
-                    ERRORS["CACHING_REQUEST"],
-                )
+            except Exception:
+                self._log_error_traceback(ERRORS["CACHING_REQUEST"], request=request)
 
     def _cache_response(
         self,
@@ -185,40 +191,33 @@ class Client(object):
                     "request": request["request"],
                     "response": response,
                 }
-        except Exception as e:
-            exc_info = sys.exc_info()
-            error_string = "".join(traceback.format_exception(*exc_info))
-            self.log.error(
-                {
-                    "request": jsonpickle.encode(request, unpicklable=False),
-                    "response": jsonpickle.encode(response, unpicklable=False),
-                    "config": jsonpickle.encode(self.base_config, unpicklable=False),
-                },
-                error_string,
-                ERRORS["CACHING_RESPONSE"],
+        except Exception:
+            self._log_error_traceback(
+                ERRORS["CACHING_RESPONSE"], request=request, response=response
             )
 
     def close(self, *args) -> None:
         self.log.debug("Closing client auto-flush, force flushing remaining cache")
         self.flush_thread.cancel()
+        self.remote_config_thread.cancel()
         self.flush_cache(force=True)
 
     def kill(self, *args) -> None:
         self.log.debug("Killing client auto-flush, deleting remaining cache.")
         self.flush_thread.cancel()
+        self.remote_config_thread.cancel()
         self._request_cache.clear()
         self._response_cache.clear()
 
     def get_config(self) -> None:
         try:
-            self.remote_config = parse_remote_config_json(self.api.get_config())
-        except Exception as e:
-            print(e)
+            raw_config = self.api.get_config()
+            self.remote_config = parse_remote_config_json(raw_config)
+        except Exception:
             if self.remote_config:
                 self.log.warning("Failed to update remote config")
             else:
-                self.log.warning("Failed to fetch initial remote config")
-            raise
+                self._log_error_traceback(ERRORS["FETCHING_CONFIG"])
 
     def flush_cache(self, force=False) -> None:
         if not self.remote_config:
@@ -240,21 +239,22 @@ class Client(object):
         if force:
             data += list(self._request_cache.values())
 
-        data = redact_values(data, self.remote_config)
+        data = redact_values(
+            data, self.remote_config, self.base_config["ignoreRedaction"]
+        )
         try:
-            print(f"Flushing {len(data)} items")
             self.log.debug(f"Flushing {len(data)} items")
-            # self.api.post_events(data)
+            self.api.post_events(data)
         except Exception as e:
             exc_info = sys.exc_info()
             error_string = "".join(traceback.format_exception(*exc_info))
             self.log.error(
+                ERRORS["POSTING_EVENTS"],
                 {
                     "data": jsonpickle.encode(data, unpicklable=False),
                     "config": jsonpickle.encode(self.base_config, unpicklable=False),
                 },
                 error_string,
-                ERRORS["POSTING_EVENTS"],
             )
         finally:
             for response_key in response_keys:

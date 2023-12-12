@@ -2,7 +2,7 @@ from urllib.parse import urljoin
 
 import requests
 
-from .constants import *
+from supergood.constants import *
 
 
 class Api(object):
