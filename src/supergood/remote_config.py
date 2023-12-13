@@ -1,5 +1,6 @@
 import re
 from dataclasses import dataclass
+from typing import Dict, List
 from urllib.parse import urlparse
 
 from tldextract import extract
@@ -30,7 +31,7 @@ class EndpointConfiguration:
     regex: re.Pattern
     location: str
     action: str
-    sensitive_keys: list[SensitiveKey]
+    sensitive_keys: List[SensitiveKey]
 
 
 def get_endpoint_test_val(
@@ -86,8 +87,8 @@ def get_endpoint_from_config(
 
 
 def parse_remote_config_json(
-    config: list[dict],
-) -> dict[str, list[EndpointConfiguration]]:
+    config: List[Dict],
+) -> Dict[str, List[EndpointConfiguration]]:
     remote_config = {}
     for entry in config:
         endpoints = []
