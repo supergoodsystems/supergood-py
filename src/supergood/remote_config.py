@@ -42,21 +42,20 @@ def get_endpoint_test_val(
     """
     Uses the location to find the correct value to check endpoint regex against
     """
-    match location:
-        case "path":
-            return urlparse(url).path
-        case "url":
-            return url
-        case "domain":
-            return extract(url).domain
-        case "subdomain":
-            return extract(url).subdomain
-        case "requestHeaders":
-            return str(request_headers)
-        case "requestBody":
-            return str(request_body)
-        case _:
-            return ""
+    if location == "path":
+        return urlparse(url).path
+    elif location == "url":
+        return url
+    elif location == "domain":
+        return extract(url).domain
+    elif location == "subdomain":
+        return extract(url).subdomain
+    elif location == "requestHeaders":
+        return str(request_headers)
+    elif location == "requestBody":
+        return str(request_body)
+    else:
+        return ""
 
 
 def get_endpoint_from_config(

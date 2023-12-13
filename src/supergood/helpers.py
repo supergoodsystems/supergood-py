@@ -62,34 +62,32 @@ def action_key(data, action):
     Performs the action defined in `action` on `data`
     Currently supports `redact` and `hash`. `ignore` handled upstream
 
-    NB: The input is assumed to be a JSON blob. Only supports JSON types, not generic objects
+    Expects `data` to be a JSON response
     """
-    match action.lower():
-        case "hash":
-            return hash_value(data)
-        case "redact":
-            typ = type(data).__name__
-            match typ:
-                case "NoneType":
-                    return f"null:0"
-                case "bool":
-                    return f"boolean:1"
-                case "str":
-                    return f"string:{len(data)}"
-                case "int":
-                    return f"integer:{len(str(data))}"
-                case "float":
-                    return f"float:{len(str(data))}"
-                case "list":
-                    return f"array:{len(data)}"
-                case "dict":
-                    return f"object:{recursive_size(data)}"
-                case _:
-                    # It should be a json type, fail
-                    raise Exception(ERRORS["UNKNOWN"])
-        case _:
-            # Unknown action type
+    test = action.lower()
+    if test == "hash":
+        return hash_value(data)
+    elif test == "redact":
+        typ = type(data).__name__
+        if typ == "NoneType":
+            return f"null:0"
+        elif typ == "bool":
+            return f"boolean:1"
+        elif typ == "str":
+            return f"string:{len(data)}"
+        elif typ == "int":
+            return f"integer:{len(str(data))}"
+        elif typ == "float":
+            return f"float:{len(str(data))}"
+        elif typ == "list":
+            return f"array:{len(data)}"
+        elif typ == "dict":
+            return f"object:{recursive_size(data)}"
+        else:
+            # It should be a json type, fail
             raise Exception(ERRORS["UNKNOWN"])
+    else:
+        raise Exception(ERRORS["UNKNOWN"])
 
 
 def deep_redact_(input, keypath, action):
