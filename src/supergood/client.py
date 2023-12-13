@@ -13,20 +13,20 @@ import jsonpickle
 from dotenv import load_dotenv
 from tldextract import extract
 
-from supergood.api import Api
-from supergood.constants import *
-from supergood.helpers import redact_values, safe_decode, safe_parse_json
-from supergood.logger import Logger
-from supergood.remote_config import (
+from .api import Api
+from .constants import *
+from .helpers import redact_values, safe_decode, safe_parse_json
+from .logger import Logger
+from .remote_config import (
     get_endpoint_from_config,
     get_endpoint_test_val,
     parse_remote_config_json,
 )
-from supergood.repeating_thread import RepeatingThread
-from supergood.vendors.aiohttp import patch as patch_aiohttp
-from supergood.vendors.http import patch as patch_http
-from supergood.vendors.requests import patch as patch_requests
-from supergood.vendors.urllib3 import patch as patch_urllib3
+from .repeating_thread import RepeatingThread
+from .vendors.aiohttp import patch as patch_aiohttp
+from .vendors.http import patch as patch_http
+from .vendors.requests import patch as patch_requests
+from .vendors.urllib3 import patch as patch_urllib3
 
 load_dotenv()
 
@@ -93,7 +93,7 @@ class Client(object):
         if request:
             data["request"] = jsonpickle.encode(request, unpicklable=False)
         if response:
-            data["response"] = (jsonpickle.encode(response, unpicklable=False),)
+            data["response"] = jsonpickle.encode(response, unpicklable=False)
         data["config"] = jsonpickle.encode(self.base_config, unpicklable=False)
         exc_info = sys.exc_info()
         error_string = "".join(traceback.format_exception(*exc_info))

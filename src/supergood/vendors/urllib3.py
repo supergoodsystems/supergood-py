@@ -2,7 +2,7 @@ import http
 
 import urllib3
 
-from supergood.constants import REQUEST_ID_KEY
+from ..constants import REQUEST_ID_KEY
 
 
 def patch(cache_request, cache_response):

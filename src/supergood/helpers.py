@@ -91,6 +91,9 @@ def action_key(data, action):
                 case _:
                     # It should be a json type, fail
                     raise Exception(ERRORS["UNKNOWN"])
+        case _:
+            # Unknown action type
+            raise Exception(ERRORS["UNKNOWN"])
 
 
 def deep_redact_(input, keypath, action):
