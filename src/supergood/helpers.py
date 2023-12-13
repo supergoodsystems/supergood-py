@@ -131,13 +131,8 @@ def deep_redact_(input, keypath, action):
         entry = get(input, key)
         describe = describe_data(entry)
         describe_split = describe.split(":")
-        compare = action.lower()
-        if compare == "ignore":
-            set_(input, key, None)
-        elif compare == "hash":
-            set_(input, key, hash_value(entry))
-        else:
-            set_(input, key, describe)
+        # NB: The UI only supports `redact` for now, so the clients only support is as well
+        set_(input, key, None)
         metadata.append(
             {
                 "keyPath": actual_key,
@@ -213,13 +208,8 @@ def redact_values(
                                 "length": int(describe_split[1]),
                             }
                         )
-                        action = key.action.lower()
-                        if action == "ignore":
-                            set_(data, keypath, None)
-                        elif action == "hash":
-                            set_(data, keypath, hash(item))
-                        else:
-                            set_(data, keypath, describe)
+                        # NB: the only action supported for now is `redact`
+                        set_(data, keypath, None)
         except Exception:
             # Log why redaction failed
             exc_info = sys.exc_info()
@@ -227,8 +217,7 @@ def redact_values(
             del exc_info  # See garbage collection warning on sys.exc_info()
             logger.error(
                 ERRORS["REDACTION"],
-                data,
-                error_string,
+                exc_info=error_string,
             )
         if skeys:
             data["metadata"] = {"sensitiveKeys": skeys}

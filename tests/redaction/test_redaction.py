@@ -37,9 +37,8 @@ class TestRedaction:
         args = Api.post_events.call_args[0][0]
         response_body = args[0]["response"]["body"]
         metadata = args[0]["metadata"]
-        assert response_body["string"] == "string:3"  # redacted!
+        assert response_body["string"] == None  # redacted!
         assert response_body["other_string"] == "Alex Klarfeld 911!"
-        # assert "responseBody.string" in metadata["sensitiveKeys"]
         assert len(metadata["sensitiveKeys"]) == 1
         assert metadata["sensitiveKeys"][0]["keyPath"] == "responseBody.string"
         assert metadata["sensitiveKeys"][0]["type"] == "string"
@@ -60,6 +59,8 @@ class TestRedaction:
         supergood_client.flush_cache()
         args = Api.post_events.call_args[0][0]
         body = args[0]["response"]["body"]
+        for key in response_json:
+            assert body[key] == None
         expected_values = {
             "responseBody.string": "string:3",
             "responseBody.number": "integer:3",
@@ -69,8 +70,6 @@ class TestRedaction:
             "responseBody.array": "array:3",
             "responseBody.object": "object:193",
         }
-        for key, val in expected_values.items():
-            assert body[key.split(".")[1]] == val
         metadata = args[0]["metadata"]
         assert metadata and "sensitiveKeys" in metadata
         assert len(metadata["sensitiveKeys"]) == 7

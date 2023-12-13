@@ -31,7 +31,7 @@ class TestRedactArrays:
         args = Api.post_events.call_args[0][0]
         body = args[0]["response"]["body"]
         metadata = args[0]["metadata"]
-        assert body["array"] == ["string:0", "string:1", "string:2"]
+        assert body["array"] == [None, None, None]
         assert "sensitiveKeys" in metadata
         skeys = metadata["sensitiveKeys"]
         assert len(skeys) == 3
@@ -57,7 +57,7 @@ class TestRedactArrays:
         assert len(body["outerArray"]) == 2
         for i in range(2):
             assert "innerArray" in body["outerArray"][i]
-            assert body["outerArray"][i]["innerArray"] == [f"string:{i+1}"] * (i + 1)
+            assert body["outerArray"][i]["innerArray"] == [None] * (i + 1)
         assert "sensitiveKeys" in metadata
         skeys = metadata["sensitiveKeys"]
         assert len(skeys) == 3

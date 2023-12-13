@@ -11,7 +11,7 @@ class SensitiveKey:
     """
     Key-level config
     key_path: path of key to action on
-    action: 'HASH' (md5 hashes value) 'IGNORE' (removes key) 'REDACT' (redacts value)
+    action: 'REDACT' (redacts value) ('HASH' and 'IGNORE' not supported for now)
     """
 
     key_path: str
