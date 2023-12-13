@@ -174,17 +174,17 @@ def redact_values(
                 if key.key_path.startswith("response") and not data.get("response"):
                     continue
                 key_split = key.key_path.split(".")
-                match key_split[0]:
-                    case "requestBody":
-                        keypath = ".".join(["request", "body"] + key_split[1:])
-                    case "requestHeaders":
-                        keypath = ".".join(["request", "headers"] + key_split[1:])
-                    case "responseBody":
-                        keypath = ".".join(["response", "body"] + key_split[1:])
-                    case "responseHeaders":
-                        keypath = ".".join(["response", "headers"] + key_split[1:])
-                    case _:
-                        raise Exception("unknown keypath")
+                if key_split[0] == "requestBody":
+                    keypath = ".".join(["request", "body"] + key_split[1:])
+                elif key_split[0] == "requestHeaders":
+                    keypath = ".".join(["request", "headers"] + key_split[1:])
+                elif key_split[0] == "responseBody":
+                    keypath = ".".join(["response", "body"] + key_split[1:])
+                elif key_split[0] == "responseHeaders":
+                    keypath = ".".join(["response", "headers"] + key_split[1:])
+                else:
+                    raise Exception("unknown keypath")
+
                 if "[]" in keypath:
                     # Keys within an array require iterative redaction
                     redactions = deep_redact_(data, keypath, key.action.lower())
@@ -194,17 +194,17 @@ def redact_values(
                     if not exists:
                         # Key not present, move on
                         continue
-                    match key.action.lower():
-                        case "ignore":
-                            metadata[key.key_path] = None
-                            unset(
-                                data,
-                                keypath,
-                            )
-                        case "redact" | "hash":
-                            val = action_key(item, key.action)
-                            metadata[key.key_path] = val
-                            set_(data, keypath, None)
+                    check = key.action.lower()
+                    if check == "ignore":
+                        metadata[key.key_path] = None
+                        unset(
+                            data,
+                            keypath,
+                        )
+                    elif check in ["redact", "hash"]:
+                        val = action_key(item, key.action)
+                        metadata[key.key_path] = val
+                        set_(data, keypath, None)
         if metadata:
             data["metadata"] = {"sensitiveKeys": metadata}
         else:
