@@ -23,7 +23,7 @@ class TestRedactArrays:
     def test_redact_array_element(self, httpserver, supergood_client):
         httpserver.expect_request("/200").respond_with_json(
             {
-                "array": ["abc", "blah", ""],
+                "array": ["", "a", "ab"],
             }
         )
         requests.get(httpserver.url_for("/200"))
@@ -31,20 +31,21 @@ class TestRedactArrays:
         args = Api.post_events.call_args[0][0]
         body = args[0]["response"]["body"]
         metadata = args[0]["metadata"]
-        assert body["array"] == [None, None, None]
+        assert body["array"] == ["string:0", "string:1", "string:2"]
         assert "sensitiveKeys" in metadata
         skeys = metadata["sensitiveKeys"]
         assert len(skeys) == 3
-        assert skeys["responseBody.array[0]"] == "string:3"
-        assert skeys["responseBody.array[1]"] == "string:4"
-        assert skeys["responseBody.array[2]"] == "string:0"
+        for i in range(3):
+            assert skeys[i]["keyPath"] == f"responseBody.array[{i}]"
+            assert skeys[i]["type"] == "string"
+            assert skeys[i]["length"] == i
 
     def test_redact_nested_array_element(self, httpserver, supergood_client):
         httpserver.expect_request("/200").respond_with_json(
             {
                 "outerArray": [
-                    {"innerArray": ["wumbo"]},
-                    {"innerArray": ["abc", ""]},
+                    {"innerArray": ["a"]},
+                    {"innerArray": ["ab", "cd"]},
                 ]
             }
         )
@@ -56,10 +57,11 @@ class TestRedactArrays:
         assert len(body["outerArray"]) == 2
         for i in range(2):
             assert "innerArray" in body["outerArray"][i]
-            assert body["outerArray"][i]["innerArray"] == [None] * (i + 1)
+            assert body["outerArray"][i]["innerArray"] == [f"string:{i+1}"] * (i + 1)
         assert "sensitiveKeys" in metadata
         skeys = metadata["sensitiveKeys"]
         assert len(skeys) == 3
-        assert skeys["responseBody.outerArray[0].innerArray[0]"] == "string:5"
-        assert skeys["responseBody.outerArray[1].innerArray[0]"] == "string:3"
-        assert skeys["responseBody.outerArray[1].innerArray[1]"] == "string:0"
+        for key in skeys:
+            int_pair = [int(i) for i in key["keyPath"] if i.isdigit()]
+            assert key["type"] == "string"
+            assert key["length"] == int_pair[0] + 1

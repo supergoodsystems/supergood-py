@@ -1,11 +1,12 @@
 import gzip
 import hashlib
 import json
+import sys
+import traceback
 from base64 import b64encode
-from sys import getsizeof
 from typing import Tuple
 
-from pydash import get, set_, unset
+from pydash import get, set_
 
 from .constants import ERRORS, GZIP_START_BYTES
 from .remote_config import get_endpoint_from_config
@@ -45,49 +46,43 @@ def recursive_size(obj, seen=set(), include_overhead=False):
     NB: NOT a perfect recursive sizeof. Expects it's operating on a JSON response
     By default does NOT include the overhead of dict overhead, just the sizes of keys and values
     """
-    size = getsizeof(obj)
     obj_id = id(obj)
     if obj_id in seen:
         return 0
     seen.add(obj_id)
+    size = 0
     if isinstance(obj, dict):
-        if not include_overhead:
-            size = 0
-        size = sum([recursive_size(v, seen) for v in obj.values()])
+        if include_overhead:
+            size += sys.getsizeof(obj)
+        size += sum([recursive_size(v, seen) for v in obj.values()])
         size += sum([recursive_size(k, seen) for k in obj.keys()])
+    else:
+        size = sys.getsizeof(obj)
     return size
 
 
-def action_key(data, action):
+def describe_data(data):
     """
-    Performs the action defined in `action` on `data`
-    Currently supports `redact` and `hash`. `ignore` handled upstream
-
-    Expects `data` to be a JSON response
+    data: a portion of a JSON response
+    returns: a string representing that data, `type:length`
     """
-    test = action.lower()
-    if test == "hash":
-        return hash_value(data)
-    elif test == "redact":
-        typ = type(data).__name__
-        if typ == "NoneType":
-            return f"null:0"
-        elif typ == "bool":
-            return f"boolean:1"
-        elif typ == "str":
-            return f"string:{len(data)}"
-        elif typ == "int":
-            return f"integer:{len(str(data))}"
-        elif typ == "float":
-            return f"float:{len(str(data))}"
-        elif typ == "list":
-            return f"array:{len(data)}"
-        elif typ == "dict":
-            return f"object:{recursive_size(data)}"
-        else:
-            # It should be a json type, fail
-            raise Exception(ERRORS["UNKNOWN"])
+    typ = type(data).__name__
+    if typ == "NoneType":
+        return f"null:0"
+    elif typ == "bool":
+        return f"boolean:1"
+    elif typ == "str":
+        return f"string:{len(data)}"
+    elif typ == "int":
+        return f"integer:{len(str(data))}"
+    elif typ == "float":
+        return f"float:{len(str(data))}"
+    elif typ == "list":
+        return f"array:{len(data)}"
+    elif typ == "dict":
+        return f"object:{recursive_size(data)}"
     else:
+        # It should be a json type, fail
         raise Exception(ERRORS["UNKNOWN"])
 
 
@@ -129,22 +124,35 @@ def deep_redact_(input, keypath, action):
     #  of the form '{request|response}.{body|headers}'
     #  however for standardization we need to transform that to a single key
     #  '{request|response}{Body|Headers}'
-    metadata = {}
+    metadata = []
     for key in all_keys:
         keysplit = key.split(".")
         actual_key = ".".join([(keysplit[0] + keysplit[1].capitalize())] + keysplit[2:])
-        if action.lower() == "ignore":
-            metadata[actual_key] = None
-            unset(input, key)
-        else:
-            metadata[actual_key] = action_key(get(input, key), action)
+        entry = get(input, key)
+        describe = describe_data(entry)
+        describe_split = describe.split(":")
+        compare = action.lower()
+        if compare == "ignore":
             set_(input, key, None)
+        elif compare == "hash":
+            set_(input, key, hash_value(entry))
+        else:
+            set_(input, key, describe)
+        metadata.append(
+            {
+                "keyPath": actual_key,
+                "type": describe_split[0],
+                "length": int(describe_split[1]),
+            }
+        )
+
     return metadata
 
 
 def redact_values(
     input_array,
     remote_config,
+    logger,
     ignore_redaction=False,
 ):
     """
@@ -159,55 +167,71 @@ def redact_values(
             input_array[i].update({"metadata": {}})
         return input_array
     for index, data in enumerate(input_array):
-        metadata = {}
-        endpoint = get_endpoint_from_config(
-            remote_config,
-            url=data["request"].get("url"),
-            request_body=data["request"]["body"],
-            request_headers=data["request"]["headers"],
-        )
-        if endpoint:
-            # Matched endpoint. Check ignore and then sensitive keys
-            if endpoint.action.lower() == "ignore":
-                remove_indices.append(index)
-                break
-            for key in endpoint.sensitive_keys:
-                if key.key_path.startswith("response") and not data.get("response"):
-                    continue
-                key_split = key.key_path.split(".")
-                if key_split[0] == "requestBody":
-                    keypath = ".".join(["request", "body"] + key_split[1:])
-                elif key_split[0] == "requestHeaders":
-                    keypath = ".".join(["request", "headers"] + key_split[1:])
-                elif key_split[0] == "responseBody":
-                    keypath = ".".join(["response", "body"] + key_split[1:])
-                elif key_split[0] == "responseHeaders":
-                    keypath = ".".join(["response", "headers"] + key_split[1:])
-                else:
-                    raise Exception("unknown keypath")
-
-                if "[]" in keypath:
-                    # Keys within an array require iterative redaction
-                    redactions = deep_redact_(data, keypath, key.action.lower())
-                    metadata.update(redactions)
-                else:
-                    item, exists = get_with_exists(data, keypath)
-                    if not exists:
-                        # Key not present, move on
+        skeys = []
+        try:
+            endpoint = get_endpoint_from_config(
+                remote_config,
+                url=data["request"].get("url"),
+                request_body=data["request"]["body"],
+                request_headers=data["request"]["headers"],
+            )
+            if endpoint:
+                # Matched endpoint. Check ignore and then sensitive keys
+                if endpoint.action.lower() == "ignore":
+                    remove_indices.append(index)
+                    break
+                for key in endpoint.sensitive_keys:
+                    if key.key_path.startswith("response") and not data.get("response"):
                         continue
-                    check = key.action.lower()
-                    if check == "ignore":
-                        metadata[key.key_path] = None
-                        unset(
-                            data,
-                            keypath,
+                    key_split = key.key_path.split(".")
+                    if key_split[0] == "requestBody":
+                        keypath = ".".join(["request", "body"] + key_split[1:])
+                    elif key_split[0] == "requestHeaders":
+                        keypath = ".".join(["request", "headers"] + key_split[1:])
+                    elif key_split[0] == "responseBody":
+                        keypath = ".".join(["response", "body"] + key_split[1:])
+                    elif key_split[0] == "responseHeaders":
+                        keypath = ".".join(["response", "headers"] + key_split[1:])
+                    else:
+                        raise Exception("unknown keypath")
+
+                    if "[]" in keypath:
+                        # Keys within an array require iterative redaction
+                        redactions = deep_redact_(data, keypath, key.action.lower())
+                        skeys += redactions
+                    else:
+                        item, exists = get_with_exists(data, keypath)
+                        if not exists:
+                            # Key not present, move on
+                            continue
+                        describe = describe_data(item)
+                        describe_split = describe.split(":")
+                        skeys.append(
+                            {
+                                "keyPath": key.key_path,
+                                "type": describe_split[0],
+                                "length": int(describe_split[1]),
+                            }
                         )
-                    elif check in ["redact", "hash"]:
-                        val = action_key(item, key.action)
-                        metadata[key.key_path] = val
-                        set_(data, keypath, None)
-        if metadata:
-            data["metadata"] = {"sensitiveKeys": metadata}
+                        action = key.action.lower()
+                        if action == "ignore":
+                            set_(data, keypath, None)
+                        elif action == "hash":
+                            set_(data, keypath, hash(item))
+                        else:
+                            set_(data, keypath, describe)
+        except Exception:
+            # Log why redaction failed
+            exc_info = sys.exc_info()
+            error_string = "".join(traceback.format_exception(*exc_info))
+            del exc_info  # See garbage collection warning on sys.exc_info()
+            logger.error(
+                ERRORS["REDACTION"],
+                data,
+                error_string,
+            )
+        if skeys:
+            data["metadata"] = {"sensitiveKeys": skeys}
         else:
             data["metadata"] = {}
 

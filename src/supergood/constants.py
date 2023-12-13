@@ -33,4 +33,5 @@ ERRORS = {
     "NO_CLIENT_ID": "No Client ID Provided, set SUPERGOOD_CLIENT_ID or pass it as an argument",
     "NO_CLIENT_SECRET": "No Client Secret Provided, set SUPERGOOD_CLIENT_SECRET or pass it as an argument",
     "UNKNOWN": "Client received unexpected value",
+    "REDACTION": "Client failed to redact sensitive keys",
 }

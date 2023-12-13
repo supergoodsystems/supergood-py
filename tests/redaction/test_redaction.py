@@ -37,10 +37,13 @@ class TestRedaction:
         args = Api.post_events.call_args[0][0]
         response_body = args[0]["response"]["body"]
         metadata = args[0]["metadata"]
-        assert response_body["string"] == None  # redacted!
+        assert response_body["string"] == "string:3"  # redacted!
         assert response_body["other_string"] == "Alex Klarfeld 911!"
-        assert "responseBody.string" in metadata["sensitiveKeys"]
-        assert metadata["sensitiveKeys"]["responseBody.string"] == "string:3"
+        # assert "responseBody.string" in metadata["sensitiveKeys"]
+        assert len(metadata["sensitiveKeys"]) == 1
+        assert metadata["sensitiveKeys"][0]["keyPath"] == "responseBody.string"
+        assert metadata["sensitiveKeys"][0]["type"] == "string"
+        assert metadata["sensitiveKeys"][0]["length"] == 3
 
     def test_each_redaction(self, httpserver, supergood_client):
         response_json = {
@@ -57,16 +60,23 @@ class TestRedaction:
         supergood_client.flush_cache()
         args = Api.post_events.call_args[0][0]
         body = args[0]["response"]["body"]
-        for key in response_json:
-            assert body[key] == None
+        expected_values = {
+            "responseBody.string": "string:3",
+            "responseBody.number": "integer:3",
+            "responseBody.float": "float:6",
+            "responseBody.bool": "boolean:1",
+            "responseBody.complex_string": "string:18",
+            "responseBody.array": "array:3",
+            "responseBody.object": "object:193",
+        }
+        for key, val in expected_values.items():
+            assert body[key.split(".")[1]] == val
         metadata = args[0]["metadata"]
         assert metadata and "sensitiveKeys" in metadata
         assert len(metadata["sensitiveKeys"]) == 7
         skeys = metadata["sensitiveKeys"]
-        assert skeys["responseBody.string"] == "string:3"
-        assert skeys["responseBody.number"] == "integer:3"
-        assert skeys["responseBody.float"] == "float:6"  # string length
-        assert skeys["responseBody.bool"] == "boolean:1"
-        assert skeys["responseBody.complex_string"] == "string:18"
-        assert skeys["responseBody.array"] == "array:3"
-        assert skeys["responseBody.object"] == "object:193"
+        for key_obj in skeys:
+            assert key_obj["keyPath"] in expected_values
+            typ, length = expected_values[key_obj["keyPath"]].split(":")
+            assert key_obj["type"] == typ
+            assert key_obj["length"] == int(length)

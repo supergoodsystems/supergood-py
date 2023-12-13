@@ -239,7 +239,7 @@ class Client(object):
             data += list(self._request_cache.values())
 
         data = redact_values(
-            data, self.remote_config, self.base_config["ignoreRedaction"]
+            data, self.remote_config, self.log, self.base_config["ignoreRedaction"]
         )
         try:
             self.log.debug(f"Flushing {len(data)} items")
