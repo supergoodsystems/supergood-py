@@ -3,6 +3,7 @@ import hashlib
 import json
 from base64 import b64encode
 from sys import getsizeof
+from typing import Tuple
 
 from pydash import get, set_, unset
 
@@ -20,7 +21,7 @@ def hash_value(input):
     return b64encode(hash.digest()).decode("utf-8")
 
 
-def get_with_exists(obj, key) -> tuple[any, bool]:
+def get_with_exists(obj, key) -> Tuple[any, bool]:
     """
     obj: a dictionary object, usually a request/response
     key: A keypath to test, in the form key1.key2[0].key3
