@@ -11,7 +11,6 @@ from urllib.parse import urlparse
 
 import jsonpickle
 from dotenv import load_dotenv
-from tldextract import extract
 
 from .api import Api
 from .constants import *

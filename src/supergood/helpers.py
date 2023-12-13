@@ -2,15 +2,11 @@ import gzip
 import hashlib
 import json
 from base64 import b64encode
-from itertools import chain
 from sys import getsizeof
-from urllib.parse import urlparse
 
 from pydash import get, set_, unset
-from pydash.arrays import flatten
-from tldextract import extract
 
-from .constants import DEFAULT_SUPERGOOD_BYTE_LIMIT, ERRORS, GZIP_START_BYTES
+from .constants import ERRORS, GZIP_START_BYTES
 from .remote_config import get_endpoint_from_config
 
 
