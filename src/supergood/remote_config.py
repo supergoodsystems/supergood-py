@@ -1,3 +1,4 @@
+import json
 import re
 from dataclasses import dataclass
 from typing import Dict, List
@@ -52,9 +53,9 @@ def get_endpoint_test_val(
     elif location == "subdomain":
         return extract(url).subdomain
     elif location == "requestHeaders":
-        return str(request_headers)
+        return json.dumps(request_headers)
     elif location == "requestBody":
-        return str(request_body)
+        return json.dumps(request_body)
     else:
         return ""
 

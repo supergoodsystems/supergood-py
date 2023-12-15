@@ -7,6 +7,7 @@ import traceback
 from base64 import b64encode
 from datetime import datetime
 from importlib.metadata import version
+from threading import Thread
 from urllib.parse import urlparse
 
 import jsonpickle
@@ -37,9 +38,23 @@ class Client(object):
         client_secret_id=os.getenv("SUPERGOOD_CLIENT_SECRET"),
         base_url=os.getenv("SUPERGOOD_BASE_URL"),
         config={},
-        auto=True,
+        metadata={},
     ):
         self.base_url = base_url if base_url else DEFAULT_SUPERGOOD_BASE_URL
+
+        # By default will spin up threads to handle flushing and config fetching
+        #  set the appropriate environment variable to override this behavior.
+        #  Primarily used during testing/debugging. Most `.env` files wont include these
+        auto_flush = True
+        auto_config = True
+        if os.getenv("SG_OVERRIDE_AUTO_FLUSH"):
+            auto_flush = False
+        if os.getenv("SG_OVERRIDE_AUTO_CONFIG"):
+            auto_config = False
+
+        if "serviceName" not in metadata and "SERVICE_NAME" in os.environ:
+            metadata["serviceName"] = os.getenv("SERVICE_NAME")
+        self.metadata = metadata
 
         authorization = f"{client_id}:{client_secret_id}"
 
@@ -54,20 +69,26 @@ class Client(object):
         self.base_config = DEFAULT_SUPERGOOD_CONFIG
         self.base_config.update(config)
 
-        self.remote_config = None
-        self.remote_config_thread = RepeatingThread(
-            self.get_config, self.base_config["configInterval"] / 1000
-        )
-        if auto:
-            self.remote_config_thread.start()
-
         self.api = Api(header_options, self.base_url)
         self.log = Logger(self.__class__.__name__, self.base_config, self.api)
+
+        self.remote_config = None
+        if auto_config:
+            self.remote_config_initial_pull = Thread(
+                daemon=True, target=self._get_config
+            )
+            self.remote_config_initial_pull.start()
+
+        self.remote_config_refresh_thread = RepeatingThread(
+            self._get_config, self.base_config["configInterval"] / 1000
+        )
+        if auto_config:
+            self.remote_config_refresh_thread.start()
 
         self.api.set_logger(self.log)
         self.api.set_event_sink_url(self.base_config["eventSinkEndpoint"])
         self.api.set_error_sink_url(self.base_config["errorSinkEndpoint"])
-        self.api.set_config_pull_url(self.base_config["configPullEndpoint"])
+        self.api.set_config_pull_url(self.base_config["remoteConfigEndpoint"])
 
         self._request_cache = {}
         self._response_cache = {}
@@ -81,27 +102,26 @@ class Client(object):
         self.flush_thread = RepeatingThread(
             self.flush_cache, self.base_config["flushInterval"] / 1000
         )
-        if auto:
+        if auto_flush:
             self.flush_thread.start()
 
         # On clean exit, or terminated exit - exit gracefully
         atexit.register(self.close)
 
-    def _log_error_traceback(self, error, request=None, response=None):
-        data = {}
-        if request:
-            data["request"] = jsonpickle.encode(request, unpicklable=False)
-        if response:
-            data["response"] = jsonpickle.encode(response, unpicklable=False)
-        data["config"] = jsonpickle.encode(self.base_config, unpicklable=False)
-        exc_info = sys.exc_info()
-        error_string = "".join(traceback.format_exception(*exc_info))
-        del exc_info  # See garbage collection warning on sys.exc_info()
-        self.log.error(
-            error,
-            data,
-            error_string,
-        )
+    def _build_log_payload(self, urls=None, size=None, num_events=None):
+        payload = {}
+        payload["config"] = self.base_config
+        payload["metadata"] = self.metadata
+        if urls:
+            if len(urls) == 1:
+                payload["metadata"].update({"requestUrl": urls[0]})
+            else:
+                payload["metadata"].update({"requestUrls": urls})
+        if size:
+            payload["metadata"].update({"payloadSize": size})
+        if num_events:
+            payload["numberOfEvents"] = num_events
+        return payload
 
     def _should_ignore(
         self,
@@ -139,16 +159,16 @@ class Client(object):
             return False
 
     def _cache_request(self, request_id, url, method, body, headers):
-        host_domain = urlparse(url).hostname
+        request = {}
+        try:
+            host_domain = urlparse(url).hostname
 
-        # Check that we should cache the request
-        if not self._should_ignore(
-            host_domain, url=url, request_body=body, request_headers=headers
-        ):
-            now = datetime.now().isoformat()
-            parsed_url = urlparse(url)
-            request = {}
-            try:
+            # Check that we should cache the request
+            if not self._should_ignore(
+                host_domain, url=url, request_body=body, request_headers=headers
+            ):
+                now = datetime.now().isoformat()
+                parsed_url = urlparse(url)
                 request = {
                     "request": {
                         "id": request_id,
@@ -162,8 +182,12 @@ class Client(object):
                     }
                 }
                 self._request_cache[request_id] = request
-            except Exception:
-                self._log_error_traceback(ERRORS["CACHING_REQUEST"], request=request)
+        except Exception as e:
+            payload = self._build_log_payload(
+                urls=[url],
+            )
+            error_string = "".join(traceback.format_exception(e))
+            self.log.error(ERRORS["CACHING_REQUEST"], payload, error_string)
 
     def _cache_response(
         self,
@@ -190,71 +214,90 @@ class Client(object):
                     "request": request["request"],
                     "response": response,
                 }
-        except Exception:
-            self._log_error_traceback(
-                ERRORS["CACHING_RESPONSE"], request=request, response=response
-            )
+        except Exception as e:
+            if request and request.get("request", None):
+                url = request.get("request").get("url")
+            else:
+                url = None
+            payload = self._build_log_payload(urls=[url] if url else [])
+            error_string = "".join(traceback.format_exception(e))
+            self.log.error(ERRORS["CACHING_RESPONSE"], payload, error_string)
 
-    def close(self, *args) -> None:
+    def close(self) -> None:
         self.log.debug("Closing client auto-flush, force flushing remaining cache")
         self.flush_thread.cancel()
-        self.remote_config_thread.cancel()
+        self.remote_config_refresh_thread.cancel()
         self.flush_cache(force=True)
 
-    def kill(self, *args) -> None:
+    def kill(self) -> None:
         self.log.debug("Killing client auto-flush, deleting remaining cache.")
         self.flush_thread.cancel()
-        self.remote_config_thread.cancel()
+        self.remote_config_refresh_thread.cancel()
         self._request_cache.clear()
         self._response_cache.clear()
 
-    def get_config(self) -> None:
+    def _get_config(self) -> None:
         try:
             raw_config = self.api.get_config()
             self.remote_config = parse_remote_config_json(raw_config)
-        except Exception:
+        except Exception as e:
             if self.remote_config:
                 self.log.warning("Failed to update remote config")
             else:
-                self._log_error_traceback(ERRORS["FETCHING_CONFIG"])
+                payload = self._build_log_payload()
+                error_string = "".join(traceback.format_exception(e))
+                self.log.error(ERRORS["FETCHING_CONFIG"], payload, error_string)
 
     def flush_cache(self, force=False) -> None:
-        if not self.remote_config:
-            self.log.info("Config not loaded yet, skipping flush")
-            return
-
-        response_keys = list(self._response_cache.keys())
-        request_keys = list(self._request_cache.keys())
-        # If there are no responses in cache, just exit
-        if len(response_keys) == 0 and not force:
-            return
-
-        # If we're forcing a flush but there's nothing in the cache, exit here
-        if force and len(response_keys) == 0 and len(request_keys) == 0:
-            return
-
-        data = list(self._response_cache.values())
-
-        if force:
-            data += list(self._request_cache.values())
-
-        data = redact_values(
-            data, self.remote_config, self.log, self.base_config["ignoreRedaction"]
-        )
+        response_keys = []
+        request_keys = []
         try:
-            self.log.debug(f"Flushing {len(data)} items")
-            self.api.post_events(data)
+            if not self.remote_config:
+                self.log.info("Config not loaded yet, cannot flush")
+                return
+            response_keys = list(self._response_cache.keys())
+            request_keys = list(self._request_cache.keys())
+            # If there are no responses in cache, just exit
+            if len(response_keys) == 0 and not force:
+                return
+
+            # If we're forcing a flush but there's nothing in the cache, exit here
+            if force and len(response_keys) == 0 and len(request_keys) == 0:
+                return
+
+            data = list(self._response_cache.values())
+
+            if force:
+                data += list(self._request_cache.values())
+            try:
+                to_delete = redact_values(
+                    data,
+                    self.remote_config,
+                    self.log,
+                    self.base_config["ignoreRedaction"],
+                )
+                if to_delete:
+                    data = list(
+                        filter(
+                            lambda ind, _: ind not in to_delete,
+                            enumerate(data),
+                        )
+                    )
+            except Exception as e:
+                urls = []
+                for entry in data:
+                    if entry.get("request", None):
+                        urls.append(entry.get("request").get("url"))
+                payload = self._build_log_payload(num_events=len(data), urls=urls)
+                error_string = "".join(traceback.format_exception(e))
+                self.log.error(ERRORS["REDACTION"], payload, error_string)
+            else:  # Only post if no exceptions
+                self.log.debug(f"Flushing {len(data)} items")
+                self.api.post_events(data)
         except Exception as e:
-            exc_info = sys.exc_info()
-            error_string = "".join(traceback.format_exception(*exc_info))
-            self.log.error(
-                ERRORS["POSTING_EVENTS"],
-                {
-                    "data": jsonpickle.encode(data, unpicklable=False),
-                    "config": jsonpickle.encode(self.base_config, unpicklable=False),
-                },
-                error_string,
-            )
+            payload = self._build_log_payload()
+            error_string = "".join(traceback.format_exception(e))
+            self.log.error(ERRORS["POSTING_EVENTS"], payload, error_string)
         finally:
             for response_key in response_keys:
                 self._response_cache.pop(response_key, None)

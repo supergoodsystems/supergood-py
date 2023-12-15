@@ -154,13 +154,15 @@ def redact_values(
     input_array: a dictionary, representing a `request, reponse` pair
     remote_config: the SG remote config
 
+    data is redacted in-place
+    a list is returned indicating indices that should be removed
     """
     remove_indices = []
     if ignore_redaction:
         # add an empty metadata object to each one and return
         for i in range(len(input_array)):
             input_array[i].update({"metadata": {}})
-        return input_array
+        return
     for index, data in enumerate(input_array):
         skeys = []
         try:
@@ -223,13 +225,7 @@ def redact_values(
             data["metadata"] = {"sensitiveKeys": skeys}
         else:
             data["metadata"] = {}
-
-    if remove_indices:
-        return list(
-            filter(lambda ind, _: ind not in remove_indices, enumerate(input_array))
-        )
-    else:
-        return input_array
+    return remove_indices
 
 
 def safe_parse_json(input: str):

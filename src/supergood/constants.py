@@ -14,7 +14,7 @@ DEFAULT_SUPERGOOD_CONFIG = {
     "configInterval": 10000,
     "eventSinkEndpoint": "/events",
     "errorSinkEndpoint": "/errors",
-    "configPullEndpoint": "/config",
+    "remoteConfigEndpoint": "/config",
     "ignoredDomains": [],
     "ignoreRedaction": False,
 }

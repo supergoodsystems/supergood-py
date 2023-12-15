@@ -2,13 +2,19 @@ from threading import Timer
 
 
 class RepeatingThread(object):
-    def __init__(self, func, interval, *args, **kwargs):
+    """
+    A function to help run a thread every `interval` seconds
+    `skip_first_interval` will not wait for the first interval before running
+    """
+
+    def __init__(self, func, interval, skip_first_interval=False, *args, **kwargs):
         self._thread = None
         self.interval = interval
         self.func = func
         self.args = args
         self.kwargs = kwargs
         self._running = False
+        self.skip_first_interval = skip_first_interval
 
     def _run_one(self):
         self._running = False

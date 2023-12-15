@@ -15,16 +15,15 @@ class Logger:
             self.log.setLevel(10)
         self.api = api
 
-    def error(self, error, data={}, exc_info=None):
+    def error(self, error, exc_info, data={}):
         self.log.error(error)
-        if data or exc_info:
-            self.api.post_errors(data, exc_info, error)
+        self.api.post_errors(data, exc_info, error)
 
     def info(self, info):
-        self.log.info(info, self.config)
+        self.log.info(info)
 
     def warning(self, warning):
-        self.log.warning(warning, self.config)
+        self.log.warning(warning)
 
     def debug(self, debug):
-        self.log.debug(debug, self.config)
+        self.log.debug(debug)

@@ -50,10 +50,10 @@ class Api(object):
     def set_error_sink_url(self, endpoint):
         self.error_sink_url = urljoin(self.base_url, endpoint)
 
-    def post_errors(self, data, error, message):
+    def post_errors(self, data, exc_info, message):
         if not self.error_sink_url:
             raise Exception(ERRORS["UNINITIALIZED"])
-        json = {"payload": data, "error": str(error), "message": message}
+        json = {"payload": data, "error": str(exc_info), "message": message}
         try:
             response = requests.post(
                 self.error_sink_url, json=json, headers=self.header_options

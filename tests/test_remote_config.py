@@ -27,7 +27,7 @@ class TestRemoteConfig:
         requests.get(httpserver.url_for("/200"))
         assert supergood_client._request_cache == {}
         assert supergood_client._response_cache == {}
-        supergood_client.get_config()  # Now there's a config
+        supergood_client._get_config()  # Now there's a config
         httpserver.expect_request("/200").respond_with_json({"key": "val"})
         requests.get(httpserver.url_for("/200"))
         supergood_client.flush_cache()
