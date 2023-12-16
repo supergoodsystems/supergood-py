@@ -167,12 +167,18 @@ def redact_values(
     for index, data in enumerate(input_array):
         skeys = []
         try:
-            endpoint = get_endpoint_from_config(
-                remote_config,
-                url=data["request"].get("url"),
-                request_body=data["request"]["body"],
-                request_headers=data["request"]["headers"],
-            )
+            endpoint = None
+            if ("metadata" in data) and (
+                vendor_id := data["metadata"].get("vendorId", None)
+            ):
+                endpoint = remote_config[vendor_id]
+            else:
+                endpoint = get_endpoint_from_config(
+                    remote_config,
+                    url=data["request"].get("url"),
+                    request_body=data["request"]["body"],
+                    request_headers=data["request"]["headers"],
+                )
             if endpoint:
                 # Matched endpoint. Check ignore and then sensitive keys
                 if endpoint.action.lower() == "ignore":
