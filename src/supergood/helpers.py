@@ -155,6 +155,7 @@ def redact_values(
     remote_config: the SG remote config
 
     data is redacted in-place
+    redaction info is placed in the metadata
     a list is returned indicating indices that should be removed
     """
     remove_indices = []
@@ -222,9 +223,7 @@ def redact_values(
                 exc_info=error_string,
             )
         if skeys:
-            data["metadata"] = {"sensitiveKeys": skeys}
-        else:
-            data["metadata"] = {}
+            data["metadata"].update({"sensitiveKeys": skeys})
     return remove_indices
 
 

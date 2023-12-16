@@ -21,7 +21,7 @@ from tests.helper import get_remote_config
 )
 class TestRedactionFails:
     def test_redaction_fails(self, httpserver, broken_client):
-        httpserver.expect_request("/200").respond_with_json({"doesnt": "matter"})
+        httpserver.expect_request("/200").respond_with_json({"string": "blah"})
         requests.get(httpserver.url_for("/200"))
         assert len(broken_client._response_cache) == 1  # event to flush
         broken_client.flush_cache()  # redaction fails! logs error but does not flush

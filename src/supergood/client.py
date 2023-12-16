@@ -126,6 +126,7 @@ class Client(object):
     def _should_ignore(
         self,
         host_domain,
+        metadata,
         url=None,
         request_body=None,
         request_headers=None,
@@ -153,33 +154,37 @@ class Client(object):
                 request_headers=request_headers,
             )
         ):
-            return endpoint.action.lower() == "ignore"
-        else:
-            # Unless an endpoint is marked ignore, assume allow
-            return False
+            # add endpoint and vendor to metadata for quicker redaction later
+            metadata["endpointId"] = endpoint.endpoint_id
+            metadata["vendorId"] = endpoint.vendor_id
+            if endpoint.action.lower() == "ignore":
+                return True
+        return False
 
     def _cache_request(self, request_id, url, method, body, headers):
         request = {}
         try:
             host_domain = urlparse(url).hostname
-
+            request["metadata"] = {}
             # Check that we should cache the request
             if not self._should_ignore(
-                host_domain, url=url, request_body=body, request_headers=headers
+                host_domain,
+                request["metadata"],  # we store endpoint id in metadata
+                url=url,
+                request_body=body,
+                request_headers=headers,
             ):
                 now = datetime.now().isoformat()
                 parsed_url = urlparse(url)
-                request = {
-                    "request": {
-                        "id": request_id,
-                        "method": method,
-                        "url": url,
-                        "body": body,
-                        "headers": dict(headers),
-                        "path": parsed_url.path,
-                        "search": parsed_url.query,
-                        "requestedAt": now,
-                    }
+                request["request"] = {
+                    "id": request_id,
+                    "method": method,
+                    "url": url,
+                    "body": body,
+                    "headers": dict(headers),
+                    "path": parsed_url.path,
+                    "search": parsed_url.query,
+                    "requestedAt": now,
                 }
                 self._request_cache[request_id] = request
         except Exception as e:
@@ -213,6 +218,7 @@ class Client(object):
                 self._response_cache[request_id] = {
                     "request": request["request"],
                     "response": response,
+                    "metadata": request.get("metadata", {}),
                 }
         except Exception as e:
             if request and request.get("request", None):

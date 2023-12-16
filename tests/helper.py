@@ -23,8 +23,10 @@ def get_remote_config(action="Allow", keys=[]):
     return [
         {
             "domain": "localhost",
+            "id": "vendor-id",
             "endpoints": [
                 {
+                    "id": "endpoint-id",
                     "matchingRegex": {"location": "path", "regex": "200"},
                     "endpointConfiguration": {
                         "action": action,

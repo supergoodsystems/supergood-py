@@ -29,6 +29,8 @@ class EndpointConfiguration:
     sensitive_keys: Keys to redact from the request and response
     """
 
+    endpoint_id: str
+    vendor_id: str
     regex: re.Pattern
     location: str
     action: str
@@ -92,6 +94,7 @@ def parse_remote_config_json(
 ) -> Dict[str, List[EndpointConfiguration]]:
     remote_config = {}
     for entry in config:
+        vendor_id = entry.get("id")
         endpoints = []
         for endpoint in entry.get("endpoints"):
             matchingRegex = endpoint.get("matchingRegex")
@@ -112,6 +115,8 @@ def parse_remote_config_json(
             regex = re.compile(matchingRegex.get("regex"))
             endpoints.append(
                 EndpointConfiguration(
+                    endpoint.get("id"),
+                    vendor_id,
                     regex,
                     matchingRegex.get("location"),
                     action,
