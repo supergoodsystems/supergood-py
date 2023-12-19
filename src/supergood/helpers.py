@@ -9,7 +9,7 @@ from typing import Tuple
 from pydash import get, set_
 
 from .constants import ERRORS, GZIP_START_BYTES
-from .remote_config import get_endpoint_from_config
+from .remote_config import get_vendor_endpoint_from_config
 
 
 def hash_value(input):
@@ -113,6 +113,10 @@ def deep_redact_(input, keypath, action):
                     continue
                 for i in range(len(arr)):
                     new_keys.append(".".join([keypart, (key_name + f"[{i}]")]))
+            if not new_keys:
+                # If at any step we run out of keys, this keypath must not exist anywhere.
+                #  we can safely redact nothing and return
+                return []
             all_keys = new_keys
         else:
             if len(all_keys) == 0:
@@ -127,7 +131,12 @@ def deep_redact_(input, keypath, action):
     metadata = []
     for key in all_keys:
         keysplit = key.split(".")
-        actual_key = ".".join([(keysplit[0] + keysplit[1].capitalize())] + keysplit[2:])
+        if len(keysplit) == 2:  # to handle top-level redactions like responseBody
+            actual_key = ".".join([(keysplit[0] + keysplit[1].capitalize())])
+        else:
+            actual_key = ".".join(
+                [(keysplit[0] + keysplit[1].capitalize())] + keysplit[2:]
+            )
         entry = get(input, key)
         describe = describe_data(entry)
         describe_split = describe.split(":")
@@ -160,20 +169,23 @@ def redact_values(
     """
     remove_indices = []
     if ignore_redaction:
-        # add an empty metadata object to each one and return
+        # add metadata if it doesn't exist, then return
         for i in range(len(input_array)):
-            input_array[i].update({"metadata": {}})
+            if "metadata" not in input_array[i]:
+                input_array[i].update({"metadata": {}})
         return
     for index, data in enumerate(input_array):
         skeys = []
         try:
             endpoint = None
-            if ("metadata" in data) and (
-                vendor_id := data["metadata"].get("vendorId", None)
+            if (
+                ("metadata" in data)
+                and (vendor_id := data["metadata"].get("vendorId", None))
+                and (endpoint_id := data["metadata"].get("endpointId", None))
             ):
-                endpoint = remote_config[vendor_id]
+                endpoint = remote_config[vendor_id].endpoints[endpoint_id]
             else:
-                endpoint = get_endpoint_from_config(
+                _, endpoint = get_vendor_endpoint_from_config(
                     remote_config,
                     url=data["request"].get("url"),
                     request_body=data["request"]["body"],
@@ -219,6 +231,10 @@ def redact_values(
                         )
                         # NB: the only action supported for now is `redact`
                         set_(data, keypath, None)
+            else:
+                # No endpoint, potentially add metadata and move on
+                if "metadata" not in data:
+                    data["metadata"] = {}
         except Exception:
             # Log why redaction failed
             exc_info = sys.exc_info()

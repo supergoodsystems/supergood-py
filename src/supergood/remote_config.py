@@ -1,7 +1,7 @@
 import json
 import re
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Tuple, Union
 from urllib.parse import urlparse
 
 from tldextract import extract
@@ -30,11 +30,23 @@ class EndpointConfiguration:
     """
 
     endpoint_id: str
-    vendor_id: str
     regex: re.Pattern
     location: str
     action: str
     sensitive_keys: List[SensitiveKey]
+
+
+@dataclass
+class VendorConfiguration:
+    """
+    Vendor-level config
+    id: vendor UUID
+    endpoints: List of known endpoints
+    """
+
+    domain: str
+    vendor_id: str
+    endpoints: Dict[str, EndpointConfiguration]
 
 
 def get_endpoint_test_val(
@@ -62,20 +74,28 @@ def get_endpoint_test_val(
         return ""
 
 
-def get_endpoint_from_config(
+def get_vendor_endpoint_from_config(
     remote_config,
     url=None,
     request_body=None,
     request_headers=None,
-):
+) -> Tuple[Union[None, VendorConfiguration], Union[None, EndpointConfiguration]]:
+    """
+    Using the url, request_body, and request_headers
+    matches to the vendors/endpoints in remote_config
+    and returns a tuple of (VendorConfiguration, EndpointConfiguration)
+    if it finds a match, otherwise (None, None)
+    """
     url_extract = extract(url)
     search = url_extract.fqdn or url_extract.domain
-    vendor_domain = next((dom for dom in remote_config if dom in search), None)
-    if vendor_domain:
-        return next(
+    vendor_config = next(
+        (vcfg for vcfg in remote_config.values() if vcfg.domain in search), None
+    )
+    if vendor_config:
+        return vendor_config, next(
             (
                 ep
-                for ep in remote_config[vendor_domain]
+                for ep in vendor_config.endpoints.values()
                 if ep.regex.search(
                     get_endpoint_test_val(
                         location=ep.location,
@@ -87,11 +107,13 @@ def get_endpoint_from_config(
             ),
             None,
         )
+    else:
+        return (None, None)
 
 
 def parse_remote_config_json(
     config: List[Dict],
-) -> Dict[str, List[EndpointConfiguration]]:
+) -> Dict[str, VendorConfiguration]:
     remote_config = {}
     for entry in config:
         vendor_id = entry.get("id")
@@ -116,13 +138,17 @@ def parse_remote_config_json(
             endpoints.append(
                 EndpointConfiguration(
                     endpoint.get("id"),
-                    vendor_id,
                     regex,
                     matchingRegex.get("location"),
                     action,
                     sensitive_keys,
                 )
             )
-        remote_config[entry.get("domain")] = endpoints
+        vendor_config = VendorConfiguration(
+            vendor_id=vendor_id,
+            domain=entry.get("domain"),
+            endpoints={ep.endpoint_id: ep for ep in endpoints},
+        )
+        remote_config[vendor_id] = vendor_config
 
     return remote_config

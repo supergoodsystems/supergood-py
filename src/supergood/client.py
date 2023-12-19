@@ -17,11 +17,7 @@ from .api import Api
 from .constants import *
 from .helpers import redact_values, safe_decode, safe_parse_json
 from .logger import Logger
-from .remote_config import (
-    get_endpoint_from_config,
-    get_endpoint_test_val,
-    parse_remote_config_json,
-)
+from .remote_config import get_vendor_endpoint_from_config, parse_remote_config_json
 from .repeating_thread import RepeatingThread
 from .vendors.aiohttp import patch as patch_aiohttp
 from .vendors.http import patch as patch_http
@@ -70,6 +66,9 @@ class Client(object):
         self.base_config.update(config)
 
         self.api = Api(header_options, self.base_url)
+        self.api.set_event_sink_url(self.base_config["eventSinkEndpoint"])
+        self.api.set_error_sink_url(self.base_config["errorSinkEndpoint"])
+        self.api.set_config_pull_url(self.base_config["remoteConfigEndpoint"])
         self.log = Logger(self.__class__.__name__, self.base_config, self.api)
 
         self.remote_config = None
@@ -86,9 +85,6 @@ class Client(object):
             self.remote_config_refresh_thread.start()
 
         self.api.set_logger(self.log)
-        self.api.set_event_sink_url(self.base_config["eventSinkEndpoint"])
-        self.api.set_error_sink_url(self.base_config["errorSinkEndpoint"])
-        self.api.set_config_pull_url(self.base_config["remoteConfigEndpoint"])
 
         self._request_cache = {}
         self._response_cache = {}
@@ -140,23 +136,16 @@ class Client(object):
         ):
             return True
 
-        endpoint = get_endpoint_from_config(
+        vendor, endpoint = get_vendor_endpoint_from_config(
             self.remote_config,
             url=url,
             request_body=request_body,
             request_headers=request_headers,
         )
-        if endpoint and endpoint.regex.search(
-            get_endpoint_test_val(
-                location=endpoint.location,
-                url=url,
-                request_body=request_body,
-                request_headers=request_headers,
-            )
-        ):
+        if endpoint:
             # add endpoint and vendor to metadata for quicker redaction later
             metadata["endpointId"] = endpoint.endpoint_id
-            metadata["vendorId"] = endpoint.vendor_id
+            metadata["vendorId"] = vendor.vendor_id
             if endpoint.action.lower() == "ignore":
                 return True
         return False
@@ -180,7 +169,7 @@ class Client(object):
                     "id": request_id,
                     "method": method,
                     "url": url,
-                    "body": body,
+                    "body": safe_parse_json(safe_decode(body)),
                     "headers": dict(headers),
                     "path": parsed_url.path,
                     "search": parsed_url.query,
