@@ -180,8 +180,8 @@ class Client(object):
             payload = self._build_log_payload(
                 urls=[url],
             )
-            error_string = "".join(traceback.format_exception(e))
-            self.log.error(ERRORS["CACHING_REQUEST"], payload, error_string)
+            trace = "".join(traceback.format_exception(e))
+            self.log.error(ERRORS["CACHING_REQUEST"], trace, payload)
 
     def _cache_response(
         self,
@@ -215,8 +215,8 @@ class Client(object):
             else:
                 url = None
             payload = self._build_log_payload(urls=[url] if url else [])
-            error_string = "".join(traceback.format_exception(e))
-            self.log.error(ERRORS["CACHING_RESPONSE"], payload, error_string)
+            trace = "".join(traceback.format_exception(e))
+            self.log.error(ERRORS["CACHING_RESPONSE"], trace, payload)
 
     def close(self) -> None:
         self.log.debug("Closing client auto-flush, force flushing remaining cache")
@@ -240,8 +240,8 @@ class Client(object):
                 self.log.warning("Failed to update remote config")
             else:
                 payload = self._build_log_payload()
-                error_string = "".join(traceback.format_exception(e))
-                self.log.error(ERRORS["FETCHING_CONFIG"], payload, error_string)
+                trace = "".join(traceback.format_exception(e))
+                self.log.error(ERRORS["FETCHING_CONFIG"], trace, payload)
 
     def flush_cache(self, force=False) -> None:
         response_keys = []
@@ -268,31 +268,27 @@ class Client(object):
                 to_delete = redact_values(
                     data,
                     self.remote_config,
-                    self.log,
                     self.base_config["ignoreRedaction"],
                 )
                 if to_delete:
-                    data = list(
-                        filter(
-                            lambda ind, _: ind not in to_delete,
-                            enumerate(data),
-                        )
-                    )
+                    data = [
+                        item for (ind, item) in enumerate(data) if ind not in to_delete
+                    ]
             except Exception as e:
                 urls = []
                 for entry in data:
                     if entry.get("request", None):
                         urls.append(entry.get("request").get("url"))
                 payload = self._build_log_payload(num_events=len(data), urls=urls)
-                error_string = "".join(traceback.format_exception(e))
-                self.log.error(ERRORS["REDACTION"], payload, error_string)
+                trace = "".join(traceback.format_exception(e))
+                self.log.error(ERRORS["REDACTION"], trace, payload)
             else:  # Only post if no exceptions
                 self.log.debug(f"Flushing {len(data)} items")
                 self.api.post_events(data)
         except Exception as e:
             payload = self._build_log_payload()
-            error_string = "".join(traceback.format_exception(e))
-            self.log.error(ERRORS["POSTING_EVENTS"], payload, error_string)
+            trace = "".join(traceback.format_exception(e))
+            self.log.error(ERRORS["POSTING_EVENTS"], trace, payload)
         finally:
             for response_key in response_keys:
                 self._response_cache.pop(response_key, None)

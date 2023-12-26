@@ -17,6 +17,7 @@ class Logger:
 
     def error(self, error, exc_info, data={}):
         self.log.error(error)
+        self.log.error(exc_info)
         self.api.post_errors(data, exc_info, error)
 
     def info(self, info):

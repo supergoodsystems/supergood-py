@@ -43,7 +43,7 @@ def get_with_exists(obj, key) -> Tuple[any, bool]:
 
 def recursive_size(obj, seen=set(), include_overhead=False):
     """
-    NB: NOT a perfect recursive sizeof. Expects it's operating on a JSON response
+    NB: Assumes it's operating on a JSON response. Not for general use
     By default does NOT include the overhead of dict overhead, just the sizes of keys and values
     """
     obj_id = id(obj)
@@ -54,8 +54,8 @@ def recursive_size(obj, seen=set(), include_overhead=False):
     if isinstance(obj, dict):
         if include_overhead:
             size += sys.getsizeof(obj)
-        size += sum([recursive_size(v, seen) for v in obj.values()])
-        size += sum([recursive_size(k, seen) for k in obj.keys()])
+        size += sum([recursive_size(v, seen, include_overhead) for v in obj.values()])
+        size += sum([recursive_size(k, seen, include_overhead) for k in obj.keys()])
     else:
         size = sys.getsizeof(obj)
     return size
@@ -64,25 +64,29 @@ def recursive_size(obj, seen=set(), include_overhead=False):
 def describe_data(data):
     """
     data: a portion of a JSON response
-    returns: a string representing that data, `type:length`
+    returns: a tuple describing the data: (type, length)
+    e.g. describe_data("kazooie") => ("string", 7)
+
+    for integers and floats uses the string length
+    for dictionaries attempts to recursively determine the size (not including dictionary overhead)
     """
     typ = type(data).__name__
     if typ == "NoneType":
-        return f"null:0"
+        return ("null", 0)
     elif typ == "bool":
-        return f"boolean:1"
+        return ("boolean", 1)
     elif typ == "str":
-        return f"string:{len(data)}"
+        return ("string", len(data))
     elif typ == "int":
-        return f"integer:{len(str(data))}"
+        return ("integer", len(str(data)))
     elif typ == "float":
-        return f"float:{len(str(data))}"
+        return ("float", len(str(data)))
     elif typ == "list":
-        return f"array:{len(data)}"
+        return ("array", len(data))
     elif typ == "dict":
-        return f"object:{recursive_size(data)}"
+        return ("object", recursive_size(data))
     else:
-        # It should be a json type, fail
+        # Expecting only JSON response types here. fail otherwise
         raise Exception(ERRORS["UNKNOWN"])
 
 
@@ -156,7 +160,6 @@ def deep_redact_(input, keypath, action):
 def redact_values(
     input_array,
     remote_config,
-    logger,
     ignore_redaction=False,
 ):
     """
@@ -176,74 +179,75 @@ def redact_values(
         return
     for index, data in enumerate(input_array):
         skeys = []
-        try:
-            endpoint = None
-            if (
-                ("metadata" in data)
-                and (vendor_id := data["metadata"].get("vendorId", None))
-                and (endpoint_id := data["metadata"].get("endpointId", None))
-            ):
-                endpoint = remote_config[vendor_id].endpoints[endpoint_id]
-            else:
-                _, endpoint = get_vendor_endpoint_from_config(
-                    remote_config,
-                    url=data["request"].get("url"),
-                    request_body=data["request"]["body"],
-                    request_headers=data["request"]["headers"],
-                )
-            if endpoint:
-                # Matched endpoint. Check ignore and then sensitive keys
-                if endpoint.action.lower() == "ignore":
-                    remove_indices.append(index)
-                    break
-                for key in endpoint.sensitive_keys:
-                    if key.key_path.startswith("response") and not data.get("response"):
-                        continue
-                    key_split = key.key_path.split(".")
-                    if key_split[0] == "requestBody":
-                        keypath = ".".join(["request", "body"] + key_split[1:])
-                    elif key_split[0] == "requestHeaders":
-                        keypath = ".".join(["request", "headers"] + key_split[1:])
-                    elif key_split[0] == "responseBody":
-                        keypath = ".".join(["response", "body"] + key_split[1:])
-                    elif key_split[0] == "responseHeaders":
-                        keypath = ".".join(["response", "headers"] + key_split[1:])
-                    else:
-                        raise Exception("unknown keypath")
-
-                    if "[]" in keypath:
-                        # Keys within an array require iterative redaction
-                        redactions = deep_redact_(data, keypath, key.action.lower())
-                        skeys += redactions
-                    else:
-                        item, exists = get_with_exists(data, keypath)
-                        if not exists:
-                            # Key not present, move on
-                            continue
-                        describe = describe_data(item)
-                        describe_split = describe.split(":")
-                        skeys.append(
-                            {
-                                "keyPath": key.key_path,
-                                "type": describe_split[0],
-                                "length": int(describe_split[1]),
-                            }
-                        )
-                        # NB: the only action supported for now is `redact`
-                        set_(data, keypath, None)
-            else:
-                # No endpoint, potentially add metadata and move on
-                if "metadata" not in data:
-                    data["metadata"] = {}
-        except Exception:
-            # Log why redaction failed
-            exc_info = sys.exc_info()
-            error_string = "".join(traceback.format_exception(*exc_info))
-            del exc_info  # See garbage collection warning on sys.exc_info()
-            logger.error(
-                ERRORS["REDACTION"],
-                exc_info=error_string,
+        endpoint = None
+        if (
+            ("metadata" in data)
+            and (vendor_id := data["metadata"].get("vendorId", None))
+            and (endpoint_id := data["metadata"].get("endpointId", None))
+        ):
+            endpoint = remote_config[vendor_id].endpoints[endpoint_id]
+        else:
+            _, endpoint = get_vendor_endpoint_from_config(
+                remote_config,
+                url=data["request"].get("url"),
+                request_body=data["request"]["body"],
+                request_headers=data["request"]["headers"],
             )
+        if endpoint:
+            # Matched endpoint. Check ignore and then sensitive keys
+            if endpoint.action.lower() == "ignore":
+                remove_indices.append(index)
+                break
+            for key in endpoint.sensitive_keys:
+                if key.key_path.startswith("response") and not data.get("response"):
+                    continue
+                key_split = key.key_path.split(".")
+                top_level_array = key_split[0].endswith("[]")
+                if key_split[0].startswith("requestBody"):
+                    keypart1 = "request"
+                    keypart2 = "body"
+                elif key_split[0].startswith("requestHeaders"):
+                    keypart1 = "request"
+                    keypart2 = "headers"
+                elif key_split[0].startswith("responseBody"):
+                    keypart1 = "response"
+                    keypart2 = "body"
+                elif key_split[0].startswith("responseHeaders"):
+                    keypart1 = "response"
+                    keypart2 = "headers"
+                else:
+                    raise Exception(f"unknown keypath {key.key_path}")
+
+                if top_level_array:
+                    keypart2 += "[]"
+                keypath = ".".join([keypart1, keypart2])
+                if len(key_split) > 1:
+                    keypath = ".".join([keypath] + key_split[1:])
+
+                if "[]" in keypath:
+                    # Keys within an array require iterative redaction
+                    redactions = deep_redact_(data, keypath, key.action.lower())
+                    skeys += redactions
+                else:
+                    item, exists = get_with_exists(data, keypath)
+                    if not exists:
+                        # Key not present, move on
+                        continue
+                    describe = describe_data(item)
+                    describe_split = describe.split(":")
+                    skeys.append(
+                        {
+                            "keyPath": key.key_path,
+                            "type": describe_split[0],
+                            "length": int(describe_split[1]),
+                        }
+                    )
+                    # NB: the only action supported for now is `redact`
+                    set_(data, keypath, None)
+        else:
+            # No endpoint, potentially add metadata and move on
+            if "metadata" not in data:
+                data["metadata"] = {}
         if skeys:
             data["metadata"].update({"sensitiveKeys": skeys})
     return remove_indices
