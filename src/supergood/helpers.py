@@ -142,15 +142,14 @@ def deep_redact_(input, keypath, action):
                 [(keysplit[0] + keysplit[1].capitalize())] + keysplit[2:]
             )
         entry = get(input, key)
-        describe = describe_data(entry)
-        describe_split = describe.split(":")
+        (data_type, data_length) = describe_data(entry)
         # NB: The UI only supports `redact` for now, so the clients only support is as well
         set_(input, key, None)
         metadata.append(
             {
                 "keyPath": actual_key,
-                "type": describe_split[0],
-                "length": int(describe_split[1]),
+                "type": data_type,
+                "length": data_length,
             }
         )
 
@@ -233,13 +232,12 @@ def redact_values(
                     if not exists:
                         # Key not present, move on
                         continue
-                    describe = describe_data(item)
-                    describe_split = describe.split(":")
+                    (data_type, data_length) = describe_data(item)
                     skeys.append(
                         {
                             "keyPath": key.key_path,
-                            "type": describe_split[0],
-                            "length": int(describe_split[1]),
+                            "type": data_type,
+                            "length": data_length,
                         }
                     )
                     # NB: the only action supported for now is `redact`

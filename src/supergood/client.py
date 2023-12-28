@@ -10,7 +10,6 @@ from importlib.metadata import version
 from threading import Thread
 from urllib.parse import urlparse
 
-import jsonpickle
 from dotenv import load_dotenv
 
 from .api import Api
@@ -130,7 +129,7 @@ class Client(object):
         supergood_base_url = urlparse(self.base_url).hostname
         # If we haven't fetched the remote config yet, always ignore
         if (
-            not self.remote_config
+            self.remote_config is None
             or host_domain == supergood_base_url
             or host_domain in self.base_config["ignoredDomains"]
         ):
@@ -247,7 +246,7 @@ class Client(object):
         response_keys = []
         request_keys = []
         try:
-            if not self.remote_config:
+            if self.remote_config is None:
                 self.log.info("Config not loaded yet, cannot flush")
                 return
             response_keys = list(self._response_cache.keys())
