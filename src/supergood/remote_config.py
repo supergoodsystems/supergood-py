@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Tuple, Union
 from urllib.parse import urlparse
 
-from tldextract import extract
+import tldextract
 
 
 @dataclass
@@ -58,6 +58,8 @@ def get_endpoint_test_val(
     """
     Uses the location to find the correct value to check endpoint regex against
     """
+    # Only uses provided TLD cache. Doesnt make call for updates
+    extract = tldextract.TLDExtract(suffix_list_urls=())
     if location == "path":
         return urlparse(url).path
     elif location == "url":
@@ -86,6 +88,7 @@ def get_vendor_endpoint_from_config(
     and returns a tuple of (VendorConfiguration, EndpointConfiguration)
     if it finds a match, otherwise (None, None)
     """
+    extract = tldextract.TLDExtract(suffix_list_urls=())
     url_extract = extract(url)
     search = url_extract.fqdn or url_extract.domain
     vendor_config = next(
