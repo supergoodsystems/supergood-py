@@ -21,7 +21,11 @@ class TestNoRedaction:
         response_body = args[0]["response"]["body"]
         assert response_body["string"] == "abc"  # not redacted!
         assert response_body["complex_string"] == "Alex Klarfeld 911!"
-        assert "metadata" in args[0] and args[0]["metadata"] == {}
+        assert "metadata" in args[0]
+        assert args[0]["metadata"] == {
+            "endpointId": "endpoint-id",
+            "vendorId": "vendor-id",
+        }
 
     def test_no_redaction(self, httpserver, supergood_client):
         httpserver.expect_request("/201").respond_with_json(
