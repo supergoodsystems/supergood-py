@@ -12,9 +12,9 @@ class TestRemoteConfig:
         remote_config = get_remote_config()
         parsed_config = parse_remote_config_json(remote_config)
         assert len(parsed_config) == 1
-        assert parsed_config["localhost"] is not None
-        assert len(parsed_config["localhost"]) == 1
-        endpoint_config = parsed_config["localhost"][0]
+        assert parsed_config["vendor-id"] is not None
+        assert len(parsed_config["vendor-id"].endpoints) == 1
+        endpoint_config = parsed_config["vendor-id"].endpoints["endpoint-id"]
         assert endpoint_config.regex == re.compile("200")
         assert endpoint_config.location == "path"
         assert endpoint_config.action == "Allow"
