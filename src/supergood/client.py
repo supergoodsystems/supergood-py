@@ -2,12 +2,11 @@
 
 import atexit
 import os
-import sys
 import traceback
 from base64 import b64encode
 from datetime import datetime
 from importlib.metadata import version
-from threading import Thread
+from threading import Lock, Thread
 from urllib.parse import urlparse
 
 from dotenv import load_dotenv
@@ -97,6 +96,7 @@ class Client(object):
         self.flush_thread = RepeatingThread(
             self.flush_cache, self.base_config["flushInterval"] / 1000
         )
+        self.flush_lock = Lock()
         if auto_flush:
             self.flush_thread.start()
 
@@ -169,7 +169,7 @@ class Client(object):
                     "method": method,
                     "url": url,
                     "body": safe_parse_json(safe_decode(body)),
-                    "headers": dict(headers),
+                    "headers": {} if headers is None else dict(headers),
                     "path": parsed_url.path,
                     "search": parsed_url.query,
                     "requestedAt": now,
@@ -209,10 +209,9 @@ class Client(object):
                     "metadata": request.get("metadata", {}),
                 }
         except Exception as e:
+            url = None
             if request and request.get("request", None):
                 url = request.get("request").get("url")
-            else:
-                url = None
             payload = self._build_log_payload(urls=[url] if url else [])
             trace = "".join(traceback.format_exception(e))
             self.log.error(ERRORS["CACHING_RESPONSE"], trace, payload)
@@ -242,13 +241,31 @@ class Client(object):
                 trace = "".join(traceback.format_exception(e))
                 self.log.error(ERRORS["FETCHING_CONFIG"], trace, payload)
 
+    def _take_lock(self, block=False) -> bool:
+        return self.flush_lock.acquire(blocking=block)
+
+    def _release_lock(self):
+        try:
+            self.flush_lock.release()
+        except RuntimeError as e:
+            payload = self._build_log_payload()
+            trace = "".join(traceback.format_exception(e))
+            self.log.error(ERRORS["LOCK_STATE"], trace, payload)
+
     def flush_cache(self, force=False) -> None:
+        # if we're not force flushing, and another flush is in progress, just skip
+        # if we are force flushing, block until the previous flush completes.
+        if self.remote_config is None:
+            self.log.info("Config not loaded yet, cannot flush")
+            return
+        acquired = self._take_lock(block=force)
+        if acquired == False:
+            self.log.info("Flush already in progress, skipping")
+            return
+        # FLUSH LOCK PROTECTION START
         response_keys = []
         request_keys = []
         try:
-            if self.remote_config is None:
-                self.log.info("Config not loaded yet, cannot flush")
-                return
             response_keys = list(self._response_cache.keys())
             request_keys = list(self._request_cache.keys())
             # If there are no responses in cache, just exit
@@ -288,9 +305,11 @@ class Client(object):
             payload = self._build_log_payload()
             trace = "".join(traceback.format_exception(e))
             self.log.error(ERRORS["POSTING_EVENTS"], trace, payload)
-        finally:
+        finally:  # always occurs, even from internal returns
             for response_key in response_keys:
                 self._response_cache.pop(response_key, None)
             if force:
                 for request_key in request_keys:
                     self._request_cache.pop(request_key, None)
+            self.flush_lock.release()
+            # FLUSH LOCK PROTECTION END
