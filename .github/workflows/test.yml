@@ -32,7 +32,10 @@ jobs:
       - name: Run tests
         run: |
           pytest tests/test_core.py
-          pytest tests/test_redacting_entire_body.py
-          pytest tests/test_dont_redact_single_key.py
           pytest tests/test_ignored_domains.py
-          pytest tests/test_ignore_redaction.py
+          pytest tests/test_remote_config.py
+          pytest tests/test_repeating_thread.py
+          pytest tests/redaction/test_no_redaction.py
+          pytest tests/redaction/test_redaction.py
+          pytest tests/redaction/test_redact_arrays.py
+          
