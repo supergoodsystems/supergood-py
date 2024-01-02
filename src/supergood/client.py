@@ -175,11 +175,11 @@ class Client(object):
                     "requestedAt": now,
                 }
                 self._request_cache[request_id] = request
-        except Exception as e:
+        except Exception:
             payload = self._build_log_payload(
                 urls=[url],
             )
-            trace = "".join(traceback.format_exception(e))
+            trace = "".join(traceback.format_exc())
             self.log.error(ERRORS["CACHING_REQUEST"], trace, payload)
 
     def _cache_response(
@@ -208,12 +208,12 @@ class Client(object):
                     "response": response,
                     "metadata": request.get("metadata", {}),
                 }
-        except Exception as e:
+        except Exception:
             url = None
             if request and request.get("request", None):
                 url = request.get("request").get("url")
             payload = self._build_log_payload(urls=[url] if url else [])
-            trace = "".join(traceback.format_exception(e))
+            trace = "".join(traceback.format_exc())
             self.log.error(ERRORS["CACHING_RESPONSE"], trace, payload)
 
     def close(self) -> None:
@@ -233,12 +233,12 @@ class Client(object):
         try:
             raw_config = self.api.get_config()
             self.remote_config = parse_remote_config_json(raw_config)
-        except Exception as e:
+        except Exception:
             if self.remote_config:
                 self.log.warning("Failed to update remote config")
             else:
                 payload = self._build_log_payload()
-                trace = "".join(traceback.format_exception(e))
+                trace = "".join(traceback.format_exc())
                 self.log.error(ERRORS["FETCHING_CONFIG"], trace, payload)
 
     def _take_lock(self, block=False) -> bool:
@@ -247,9 +247,9 @@ class Client(object):
     def _release_lock(self):
         try:
             self.flush_lock.release()
-        except RuntimeError as e:
+        except RuntimeError:  # releasing a non-held lock
             payload = self._build_log_payload()
-            trace = "".join(traceback.format_exception(e))
+            trace = "".join(traceback.format_exc())
             self.log.error(ERRORS["LOCK_STATE"], trace, payload)
 
     def flush_cache(self, force=False) -> None:
@@ -290,20 +290,20 @@ class Client(object):
                     data = [
                         item for (ind, item) in enumerate(data) if ind not in to_delete
                     ]
-            except Exception as e:
+            except Exception:
                 urls = []
                 for entry in data:
                     if entry.get("request", None):
                         urls.append(entry.get("request").get("url"))
                 payload = self._build_log_payload(num_events=len(data), urls=urls)
-                trace = "".join(traceback.format_exception(e))
+                trace = "".join(traceback.format_exc())
                 self.log.error(ERRORS["REDACTION"], trace, payload)
             else:  # Only post if no exceptions
                 self.log.debug(f"Flushing {len(data)} items")
                 self.api.post_events(data)
-        except Exception as e:
+        except Exception:
             payload = self._build_log_payload()
-            trace = "".join(traceback.format_exception(e))
+            trace = "".join(traceback.format_exc())
             self.log.error(ERRORS["POSTING_EVENTS"], trace, payload)
         finally:  # always occurs, even from internal returns
             for response_key in response_keys:

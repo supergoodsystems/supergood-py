@@ -256,7 +256,7 @@ def safe_parse_json(input: str):
         return ""
     try:
         return json.loads(input)
-    except Exception as e:
+    except Exception:
         return safe_decode(input)
 
 
@@ -269,5 +269,5 @@ def safe_decode(input, encoding="utf-8"):
             return input
 
         return input.decode(encoding)
-    except Exception as e:
+    except Exception:
         return str(input)

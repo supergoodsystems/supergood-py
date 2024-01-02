@@ -59,5 +59,5 @@ class Api(object):
                 self.error_sink_url, json=json, headers=self.header_options
             )
             return response.status_code
-        except Exception as e:
+        except Exception:
             self.log.warning(f"Failed to report error to {self.error_sink_url}")
