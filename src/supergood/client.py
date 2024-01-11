@@ -19,6 +19,7 @@ from .remote_config import get_vendor_endpoint_from_config, parse_remote_config_
 from .repeating_thread import RepeatingThread
 from .vendors.aiohttp import patch as patch_aiohttp
 from .vendors.http import patch as patch_http
+from .vendors.httpx import patch as patch_httpx
 from .vendors.requests import patch as patch_requests
 from .vendors.urllib3 import patch as patch_urllib3
 
@@ -92,6 +93,7 @@ class Client(object):
         patch_urllib3(self._cache_request, self._cache_response)
         patch_http(self._cache_request, self._cache_response)
         patch_aiohttp(self._cache_request, self._cache_response)
+        patch_httpx(self._cache_request, self._cache_response)
 
         self.flush_thread = RepeatingThread(
             self.flush_cache, self.base_config["flushInterval"] / 1000
