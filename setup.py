@@ -21,6 +21,7 @@ setuptools.setup(
     package_dir={"": "src"},
     install_requires=[
         "aiohttp",
+        "httpx",
         "jsonpickle",
         "pydash==7.0.1",
         "python-dotenv==1.0.0",
