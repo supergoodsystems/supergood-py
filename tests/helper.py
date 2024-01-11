@@ -3,6 +3,10 @@ def get_config(
     ignored_domains=[],
     ignore_redaction=False,
     config_interval=10000,
+    log_request_body=True,
+    log_request_headers=True,
+    log_response_body=True,
+    log_response_headers=True,
 ):
     return {
         "flushInterval": flush_interval,
@@ -11,6 +15,10 @@ def get_config(
         "errorSinkEndpoint": "https://api.supergood.ai/errors",
         "ignoredDomains": ignored_domains,
         "ignoreRedaction": ignore_redaction,
+        "logRequestHeaders": log_request_headers,
+        "logRequestBody": log_request_body,
+        "logResponseHeaders": log_response_headers,
+        "logResponseBody": log_response_body,
     }
 
 
