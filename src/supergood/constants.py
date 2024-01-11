@@ -17,6 +17,10 @@ DEFAULT_SUPERGOOD_CONFIG = {
     "remoteConfigEndpoint": "/config",
     "ignoredDomains": [],
     "ignoreRedaction": False,
+    "logRequestHeaders": True,
+    "logRequestBody": True,
+    "logResponseHeaders": True,
+    "logResponseBody": True,
 }
 
 ERRORS = {

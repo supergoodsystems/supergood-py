@@ -76,6 +76,8 @@ class Client(object):
                 daemon=True, target=self._get_config
             )
             self.remote_config_initial_pull.start()
+        else:
+            self.log.debug("auto config off. Remember to request manually")
 
         self.remote_config_refresh_thread = RepeatingThread(
             self._get_config, self.base_config["configInterval"] / 1000
@@ -101,6 +103,8 @@ class Client(object):
         self.flush_lock = Lock()
         if auto_flush:
             self.flush_thread.start()
+        else:
+            self.log.debug("auto flush off, remember to flush manually")
 
         # On clean exit, or terminated exit - exit gracefully
         atexit.register(self.close)
@@ -166,12 +170,22 @@ class Client(object):
             ):
                 now = datetime.now().isoformat()
                 parsed_url = urlparse(url)
+                filtered_body = (
+                    ""
+                    if not self.base_config["logRequestBody"]
+                    else safe_parse_json(safe_decode(body))
+                )
+                filtered_headers = (
+                    {}
+                    if (not self.base_config["logRequestHeaders"] or headers is None)
+                    else dict(headers)
+                )
                 request["request"] = {
                     "id": request_id,
                     "method": method,
                     "url": url,
-                    "body": safe_parse_json(safe_decode(body)),
-                    "headers": {} if headers is None else dict(headers),
+                    "body": filtered_body,
+                    "headers": filtered_headers,
                     "path": parsed_url.path,
                     "search": parsed_url.query,
                     "requestedAt": now,
@@ -197,10 +211,16 @@ class Client(object):
             # Ignored domains are not in the request cache, so this yields None
             request = self._request_cache.pop(request_id, None)
             if request:
-                decoded_body = safe_decode(response_body)
+                body = safe_parse_json(safe_decode(response_body))
+                filtered_body = "" if not self.base_config["logResponseBody"] else body
+                filtered_headers = (
+                    {}
+                    if not self.base_config["logResponseHeaders"]
+                    else dict(response_headers)
+                )
                 response = {
-                    "body": safe_parse_json(decoded_body),
-                    "headers": dict(response_headers),
+                    "body": filtered_body,
+                    "headers": filtered_headers,
                     "status": response_status,
                     "statusText": response_status_text,
                     "respondedAt": datetime.now().isoformat(),
