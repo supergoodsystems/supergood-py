@@ -6,10 +6,6 @@ from ..constants import REQUEST_ID_KEY
 
 
 def patch(cache_request, cache_response):
-    # _original_read = Client.read
-    # _original_getresponse = http.client.HTTPConnection.getresponse
-    # _original_request = http.client.HTTPConnection.request
-    # _original_getheaders = http.client.HTTPResponse.getheaders
     _original_handle_request = httpx.HTTPTransport.handle_request
     _original_response_read = httpx.Response.read
 
