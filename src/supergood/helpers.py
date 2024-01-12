@@ -87,7 +87,7 @@ def describe_data(data):
         return ("object", recursive_size(data))
     else:
         # Expecting only JSON response types here. fail otherwise
-        raise Exception(ERRORS["UNKNOWN"])
+        raise Exception()
 
 
 def deep_redact_(input, keypath, action):
@@ -156,13 +156,39 @@ def deep_redact_(input, keypath, action):
     return metadata
 
 
-def redact_values(
-    input_array,
-    remote_config,
-    ignore_redaction=False,
-):
+def redact_one_recursive(elem, skeys, path=[]):
+    if isinstance(elem, dict):
+        for key, value in elem.items():
+            redact_one_recursive(value, path + [str(key)])
+    elif isinstance(elem, list):
+        for index, item in enumerate(elem):
+            if len(path) == 0:
+                raise Exception
+            path[-1] = path[-1] + f"[{str(index)}]"
+            redact_one_recursive(item, path + [f"[{str(index)}]"])
+    else:
+        (data_type, data_length) = describe_data(elem)
+        skeys.append(
+            {"keyPath": ".".join(path), "type": data_type, "length": data_length}
+        )
+
+
+def redact_all(input_array):
     """
-    input_array: a dictionary, representing a `request, reponse` pair
+    THIS FUNCTION REDACTS ALL LEAF VALUES
+    input_array: a dictionary mapping request id to `request, response, metadata` object
+
+    data is redacted in-place
+    redaction info is placed in metadata
+
+    """
+    for index, data in enumerate(input_array):
+        skeys = []
+
+
+def redact_values(input_array, remote_config, base_config):
+    """
+    input_array: a dictionary, mapping request id to `request, response, metadata` object
     remote_config: the SG remote config
 
     data is redacted in-place
@@ -170,7 +196,7 @@ def redact_values(
     a list is returned indicating indices that should be removed
     """
     remove_indices = []
-    if ignore_redaction:
+    if base_config["ignoreRedaction"]:
         # add metadata if it doesn't exist, then return
         for i in range(len(input_array)):
             if "metadata" not in input_array[i]:
