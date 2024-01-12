@@ -325,22 +325,17 @@ class Client(object):
                 self.log.debug(f"Flushing {len(data)} items")
                 self.api.post_events(data)
         except Exception:
-            was_set = False
+            trace = "".join(traceback.format_exc())
             try:
                 urls = []
                 for entry in data:
                     if entry.get("request", None):
                         urls.append(entry.get("request").get("url"))
                 num_events = len(data)
-                was_set = True
-            except Exception:
-                # something really messed up, just report out
-                pass
-            if was_set:
                 payload = self._build_log_payload(num_events=num_events, urls=urls)
-            else:
+            except Exception:
+                # something is really messed up, just report out
                 payload = self._build_log_payload()
-            trace = "".join(traceback.format_exc())
             self.log.error(ERRORS["POSTING_EVENTS"], trace, payload)
         finally:  # always occurs, even from internal returns
             for response_key in response_keys:
