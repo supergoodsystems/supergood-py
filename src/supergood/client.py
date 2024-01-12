@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 
 from .api import Api
 from .constants import *
-from .helpers import redact_values, safe_decode, safe_parse_json
+from .helpers import decode_headers, redact_values, safe_decode, safe_parse_json
 from .logger import Logger
 from .remote_config import get_vendor_endpoint_from_config, parse_remote_config_json
 from .repeating_thread import RepeatingThread
@@ -158,6 +158,7 @@ class Client(object):
     def _cache_request(self, request_id, url, method, body, headers):
         request = {}
         try:
+            url = safe_decode(url)  # we do this first so the urlparse isn't also bytes
             host_domain = urlparse(url).hostname
             request["metadata"] = {}
             # Check that we should cache the request
@@ -178,11 +179,11 @@ class Client(object):
                 filtered_headers = (
                     {}
                     if (not self.base_config["logRequestHeaders"] or headers is None)
-                    else dict(headers)
+                    else decode_headers(headers)
                 )
                 request["request"] = {
                     "id": request_id,
-                    "method": method,
+                    "method": safe_decode(method),
                     "url": url,
                     "body": filtered_body,
                     "headers": filtered_headers,
@@ -216,13 +217,13 @@ class Client(object):
                 filtered_headers = (
                     {}
                     if not self.base_config["logResponseHeaders"]
-                    else dict(response_headers)
+                    else decode_headers(dict(response_headers))
                 )
                 response = {
                     "body": filtered_body,
                     "headers": filtered_headers,
                     "status": response_status,
-                    "statusText": response_status_text,
+                    "statusText": safe_decode(response_status_text),
                     "respondedAt": datetime.now().isoformat(),
                 }
                 self._response_cache[request_id] = {

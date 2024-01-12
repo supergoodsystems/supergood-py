@@ -264,10 +264,19 @@ def safe_decode(input, encoding="utf-8"):
     try:
         if isinstance(input, bytes) and input[:2] == GZIP_START_BYTES:
             return gzip.decompress(input)
-
         if isinstance(input, str):
             return input
-
         return input.decode(encoding)
     except Exception:
         return str(input)
+
+
+def decode_headers(headers, encoding="utf-8"):
+    for key, value in headers.items():
+        decoded_key = key
+        if isinstance(key, bytes):
+            decoded_key = safe_decode(key, encoding)
+        decoded_value = value
+        if isinstance(value, bytes):
+            decoded_value = safe_decode(value, encoding)
+        headers[decoded_key] = decoded_value
