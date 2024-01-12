@@ -272,6 +272,7 @@ def safe_decode(input, encoding="utf-8"):
 
 
 def decode_headers(headers, encoding="utf-8"):
+    new_headers = {}
     for key, value in headers.items():
         decoded_key = key
         if isinstance(key, bytes):
@@ -279,4 +280,5 @@ def decode_headers(headers, encoding="utf-8"):
         decoded_value = value
         if isinstance(value, bytes):
             decoded_value = safe_decode(value, encoding)
-        headers[decoded_key] = decoded_value
+        new_headers[decoded_key] = decoded_value
+    return new_headers
