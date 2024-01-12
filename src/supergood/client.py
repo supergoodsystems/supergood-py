@@ -179,7 +179,7 @@ class Client(object):
                 filtered_headers = (
                     {}
                     if (not self.base_config["logRequestHeaders"] or headers is None)
-                    else decode_headers(headers)
+                    else decode_headers(dict(headers))
                 )
                 request["request"] = {
                     "id": request_id,
