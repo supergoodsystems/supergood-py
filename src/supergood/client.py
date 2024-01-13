@@ -13,7 +13,13 @@ from dotenv import load_dotenv
 
 from .api import Api
 from .constants import *
-from .helpers import decode_headers, redact_values, safe_decode, safe_parse_json
+from .helpers import (
+    decode_headers,
+    redact_all,
+    redact_values,
+    safe_decode,
+    safe_parse_json,
+)
 from .logger import Logger
 from .remote_config import get_vendor_endpoint_from_config, parse_remote_config_json
 from .repeating_thread import RepeatingThread
@@ -304,15 +310,20 @@ class Client(object):
             if force:
                 data += list(self._request_cache.values())
             try:
-                to_delete = redact_values(
-                    data,
-                    self.remote_config,
-                    self.base_config["ignoreRedaction"],
-                )
-                if to_delete:
-                    data = [
-                        item for (ind, item) in enumerate(data) if ind not in to_delete
-                    ]
+                if self.base_config["forceRedactAll"]:
+                    redact_all(data)
+                else:
+                    to_delete = redact_values(
+                        data,
+                        self.remote_config,
+                        self.base_config,
+                    )
+                    if to_delete:
+                        data = [
+                            item
+                            for (ind, item) in enumerate(data)
+                            if ind not in to_delete
+                        ]
             except Exception:
                 urls = []
                 for entry in data:
@@ -323,6 +334,7 @@ class Client(object):
                 self.log.error(ERRORS["REDACTION"], trace, payload)
             else:  # Only post if no exceptions
                 self.log.debug(f"Flushing {len(data)} items")
+                # self.log.debug(data)
                 self.api.post_events(data)
         except Exception:
             trace = "".join(traceback.format_exc())

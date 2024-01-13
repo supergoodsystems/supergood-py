@@ -90,6 +90,56 @@ def describe_data(data):
         raise Exception()
 
 
+def redact_all_helper(elem, skeys, path=[]):
+    if isinstance(elem, dict):
+        for key, value in elem.items():
+            redact_all_helper(value, skeys, path + [str(key)])
+    elif isinstance(elem, list):
+        for index, item in enumerate(elem):
+            if len(path) == 0:
+                # This should not happen given the implementation
+                new_path = f"[{str(index)}]"
+            else:
+                new_path = path[:]
+                new_path[-1] = new_path[-1] + f"[{str(index)}]"
+            redact_all_helper(item, skeys, new_path)
+    else:
+        (data_type, data_length) = describe_data(elem)
+        skeys.append(
+            {
+                "keyPath": ".".join(path),
+                "type": data_type,
+                "length": data_length,
+            }
+        )
+
+
+def redact_all(input_array):
+    """
+    THIS FUNCTION REDACTS ALL LEAF VALUES
+    input_array: a dictionary mapping request id to `request, response, metadata` object
+
+    data is redacted in-place
+    redaction info is placed in metadata
+
+    """
+    for data in input_array:
+        skeys = []
+        if data.get("request", None):
+            req = data.get("request")
+            if req.get("body", None):
+                redact_all_helper(req.get("body"), skeys, path=["requestBody"])
+            if req.get("headers", None):
+                redact_all_helper(req.get("headers"), skeys, path=["requestHeaders"])
+        if data.get("response", None):
+            resp = data.get("response")
+            if resp.get("body", None):
+                redact_all_helper(resp.get("body"), skeys, path=["responseBody"])
+            if resp.get("headers", None):
+                redact_all_helper(resp.get("headers"), skeys, path=["responseHeaders"])
+        data["metadata"] = skeys
+
+
 def deep_redact_(input, keypath, action):
     """
     input: a request or response json blob to be redacted
@@ -156,34 +206,54 @@ def deep_redact_(input, keypath, action):
     return metadata
 
 
-def redact_one_recursive(elem, skeys, path=[]):
-    if isinstance(elem, dict):
-        for key, value in elem.items():
-            redact_one_recursive(value, path + [str(key)])
-    elif isinstance(elem, list):
-        for index, item in enumerate(elem):
-            if len(path) == 0:
-                raise Exception
-            path[-1] = path[-1] + f"[{str(index)}]"
-            redact_one_recursive(item, path + [f"[{str(index)}]"])
-    else:
-        (data_type, data_length) = describe_data(elem)
-        skeys.append(
-            {"keyPath": ".".join(path), "type": data_type, "length": data_length}
-        )
+def redact_one(obj, endpoint):
+    skeys = []
+    for key in endpoint.sensitive_keys:
+        if key.key_path.startswith("response") and not obj.get("response"):
+            continue
+        key_split = key.key_path.split(".")
+        top_level_array = key_split[0].endswith("[]")
+        if key_split[0].startswith("requestBody"):
+            keypart1 = "request"
+            keypart2 = "body"
+        elif key_split[0].startswith("requestHeaders"):
+            keypart1 = "request"
+            keypart2 = "headers"
+        elif key_split[0].startswith("responseBody"):
+            keypart1 = "response"
+            keypart2 = "body"
+        elif key_split[0].startswith("responseHeaders"):
+            keypart1 = "response"
+            keypart2 = "headers"
+        else:
+            raise Exception(f"unknown keypath {key.key_path}")
 
+        if top_level_array:
+            keypart2 += "[]"
+        keypath = ".".join([keypart1, keypart2])
+        if len(key_split) > 1:
+            keypath = ".".join([keypath] + key_split[1:])
 
-def redact_all(input_array):
-    """
-    THIS FUNCTION REDACTS ALL LEAF VALUES
-    input_array: a dictionary mapping request id to `request, response, metadata` object
-
-    data is redacted in-place
-    redaction info is placed in metadata
-
-    """
-    for index, data in enumerate(input_array):
-        skeys = []
+        if "[]" in keypath:
+            # Keys within an array require iterative redaction
+            redactions = deep_redact_(obj, keypath, key.action.lower())
+            skeys += redactions
+        else:
+            item, exists = get_with_exists(obj, keypath)
+            if not exists:
+                # Key not present, move on
+                continue
+            (data_type, data_length) = describe_data(item)
+            skeys.append(
+                {
+                    "keyPath": key.key_path,
+                    "type": data_type,
+                    "length": data_length,
+                }
+            )
+            # NB: the only action supported for now is `redact`
+            set_(obj, keypath, None)
+    return skeys
 
 
 def redact_values(input_array, remote_config, base_config):
@@ -223,51 +293,7 @@ def redact_values(input_array, remote_config, base_config):
             if endpoint.action.lower() == "ignore":
                 remove_indices.append(index)
                 break
-            for key in endpoint.sensitive_keys:
-                if key.key_path.startswith("response") and not data.get("response"):
-                    continue
-                key_split = key.key_path.split(".")
-                top_level_array = key_split[0].endswith("[]")
-                if key_split[0].startswith("requestBody"):
-                    keypart1 = "request"
-                    keypart2 = "body"
-                elif key_split[0].startswith("requestHeaders"):
-                    keypart1 = "request"
-                    keypart2 = "headers"
-                elif key_split[0].startswith("responseBody"):
-                    keypart1 = "response"
-                    keypart2 = "body"
-                elif key_split[0].startswith("responseHeaders"):
-                    keypart1 = "response"
-                    keypart2 = "headers"
-                else:
-                    raise Exception(f"unknown keypath {key.key_path}")
-
-                if top_level_array:
-                    keypart2 += "[]"
-                keypath = ".".join([keypart1, keypart2])
-                if len(key_split) > 1:
-                    keypath = ".".join([keypath] + key_split[1:])
-
-                if "[]" in keypath:
-                    # Keys within an array require iterative redaction
-                    redactions = deep_redact_(data, keypath, key.action.lower())
-                    skeys += redactions
-                else:
-                    item, exists = get_with_exists(data, keypath)
-                    if not exists:
-                        # Key not present, move on
-                        continue
-                    (data_type, data_length) = describe_data(item)
-                    skeys.append(
-                        {
-                            "keyPath": key.key_path,
-                            "type": data_type,
-                            "length": data_length,
-                        }
-                    )
-                    # NB: the only action supported for now is `redact`
-                    set_(data, keypath, None)
+            skeys = redact_one(data, endpoint)
         else:
             # No endpoint, potentially add metadata and move on
             if "metadata" not in data:
@@ -288,6 +314,8 @@ def safe_parse_json(input: str):
 
 def safe_decode(input, encoding="utf-8"):
     try:
+        if input is None:
+            return None
         if isinstance(input, bytes) and input[:2] == GZIP_START_BYTES:
             return gzip.decompress(input)
         if isinstance(input, str):
