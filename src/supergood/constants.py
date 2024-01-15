@@ -17,7 +17,7 @@ DEFAULT_SUPERGOOD_CONFIG = {
     "remoteConfigEndpoint": "/config",
     "ignoredDomains": [],
     "forceRedactAll": True,  # redact all payloads, ignore other flags
-    "logRequestHeaders": True,  # unless defaultRedact,
+    "logRequestHeaders": True,  # more fine-grained redaction for each of the request|response body|headers
     "logRequestBody": True,
     "logResponseHeaders": True,
     "logResponseBody": True,
