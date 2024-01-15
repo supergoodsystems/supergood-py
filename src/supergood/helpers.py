@@ -90,10 +90,22 @@ def describe_data(data):
         raise Exception()
 
 
-def redact_all_helper(elem, skeys, path=[]):
+def transform_key(key, replace):
+    split = key["keyPath"].split(".")
+    if "[" in split[0]:
+        loc = split[0].find("[")
+        new_replace = replace + split[0][loc:]
+        return ".".join([new_replace] + split[1:])
+    else:
+        return ".".join([replace] + split[1:])
+
+
+def redact_all_helper(elem, path=[]):
+    skeys = []
     if isinstance(elem, dict):
         for key, value in elem.items():
-            redact_all_helper(value, skeys, path + [str(key)])
+            new_skeys = redact_all_helper(value, path + [str(key)])
+            skeys += new_skeys
     elif isinstance(elem, list):
         for index, item in enumerate(elem):
             if len(path) == 0:
@@ -102,7 +114,8 @@ def redact_all_helper(elem, skeys, path=[]):
             else:
                 new_path = path[:]
                 new_path[-1] = new_path[-1] + f"[{str(index)}]"
-            redact_all_helper(item, skeys, new_path)
+            new_skeys = redact_all_helper(item, new_path)
+            skeys += new_skeys
     else:
         (data_type, data_length) = describe_data(elem)
         skeys.append(
@@ -112,6 +125,7 @@ def redact_all_helper(elem, skeys, path=[]):
                 "length": data_length,
             }
         )
+    return skeys
 
 
 def redact_all(input_array):
@@ -128,15 +142,35 @@ def redact_all(input_array):
         if data.get("request", None):
             req = data.get("request")
             if req.get("body", None):
-                redact_all_helper(req.get("body"), skeys, path=["requestBody"])
+                new_skeys = redact_all_helper(req.get("body"), path=["requestBody"])
+                for key in new_skeys:
+                    actual = transform_key(key, "request.body")
+                    set_(data, actual, None)
+                skeys += new_skeys
             if req.get("headers", None):
-                redact_all_helper(req.get("headers"), skeys, path=["requestHeaders"])
+                new_skeys = redact_all_helper(
+                    req.get("headers"), path=["requestHeaders"]
+                )
+                for key in new_skeys:
+                    actual = transform_key(key, "request.headers")
+                    set_(data, actual, None)
+                skeys += new_skeys
         if data.get("response", None):
             resp = data.get("response")
             if resp.get("body", None):
-                redact_all_helper(resp.get("body"), skeys, path=["responseBody"])
+                new_skeys = redact_all_helper(resp.get("body"), path=["responseBody"])
+                for key in new_skeys:
+                    actual = transform_key(key, "response.body")
+                    set_(data, actual, None)
+                skeys += new_skeys
             if resp.get("headers", None):
-                redact_all_helper(resp.get("headers"), skeys, path=["responseHeaders"])
+                new_skeys = redact_all_helper(
+                    resp.get("headers"), path=["responseHeaders"]
+                )
+                for key in new_skeys:
+                    actual = transform_key(key, "response.headers")
+                    set_(data, actual, None)
+                skeys += new_skeys
         data["metadata"] = skeys
 
 
