@@ -7,6 +7,7 @@ def get_config(
     log_request_headers=True,
     log_response_body=True,
     log_response_headers=True,
+    force_redact_all=False,  # this is true by default in the config, but most tests want to test it off
 ):
     return {
         "flushInterval": flush_interval,
@@ -19,6 +20,7 @@ def get_config(
         "logRequestBody": log_request_body,
         "logResponseHeaders": log_response_headers,
         "logResponseBody": log_response_body,
+        "forceRedactAll": force_redact_all,
     }
 
 
