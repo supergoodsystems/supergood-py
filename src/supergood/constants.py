@@ -16,11 +16,12 @@ DEFAULT_SUPERGOOD_CONFIG = {
     "errorSinkEndpoint": "/errors",
     "remoteConfigEndpoint": "/config",
     "ignoredDomains": [],
-    "ignoreRedaction": False,
-    "logRequestHeaders": True,
+    "forceRedactAll": True,  # redact all payloads, ignore other flags
+    "logRequestHeaders": True,  # more fine-grained redaction for each of the request|response body|headers
     "logRequestBody": True,
     "logResponseHeaders": True,
     "logResponseBody": True,
+    "ignoreRedaction": False,
 }
 
 ERRORS = {
