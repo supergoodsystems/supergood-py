@@ -175,7 +175,7 @@ class Client(object):
                 request_body=body,
                 request_headers=headers,
             ):
-                now = datetime.now().isoformat()
+                now = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
                 parsed_url = urlparse(url)
                 filtered_body = (
                     ""
@@ -230,7 +230,7 @@ class Client(object):
                     "headers": filtered_headers,
                     "status": response_status,
                     "statusText": safe_decode(response_status_text),
-                    "respondedAt": datetime.now().isoformat(),
+                    "respondedAt": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
                 }
                 self._response_cache[request_id] = {
                     "request": request["request"],
