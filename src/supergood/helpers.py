@@ -171,7 +171,9 @@ def redact_all(input_array):
                     actual = transform_key(key, "response.headers")
                     set_(data, actual, None)
                 skeys += new_skeys
-        data["metadata"] = skeys
+        if "metadata" not in data:
+            data["metadata"] = {}
+        data["metadata"].update({"sensitiveKeys": skeys})
 
 
 def deep_redact_(input, keypath, action):
