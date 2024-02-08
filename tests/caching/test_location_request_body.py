@@ -16,8 +16,8 @@ from tests.helper import get_remote_config
     ],
     indirect=True,
 )
-class TestLocationRequestHeaders:
-    def test_request_headers(self, httpserver, supergood_client):
+class TestLocationRequestBody:
+    def test_request_body(self, httpserver, supergood_client):
         httpserver.expect_request("/200").respond_with_json(
             {
                 "string": "abc",
