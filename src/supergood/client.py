@@ -166,6 +166,9 @@ class Client(object):
         try:
             url = safe_decode(url)  # we do this first so the urlparse isn't also bytes
             host_domain = urlparse(url).hostname
+            safe_headers = (
+                {} if headers is None else dict(headers)
+            )  # sometimes headers is not json serializable
             request["metadata"] = {}
             # Check that we should cache the request
             if not self._should_ignore(
@@ -173,7 +176,7 @@ class Client(object):
                 request["metadata"],  # we store endpoint id in metadata
                 url=url,
                 request_body=body,
-                request_headers=headers,
+                request_headers=safe_headers,
             ):
                 now = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
                 parsed_url = urlparse(url)
@@ -185,7 +188,7 @@ class Client(object):
                 filtered_headers = (
                     {}
                     if (not self.base_config["logRequestHeaders"] or headers is None)
-                    else decode_headers(dict(headers))
+                    else decode_headers(safe_headers)
                 )
                 request["request"] = {
                     "id": request_id,

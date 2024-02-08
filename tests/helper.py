@@ -28,7 +28,7 @@ def build_key(key_path, key_action="REDACT"):
     return {"keyPath": key_path, "action": key_action}
 
 
-def get_remote_config(action="Allow", keys=[]):
+def get_remote_config(action="Allow", keys=[], location="path", regex="200"):
     built_keys = list(map(lambda tup: build_key(tup[0], tup[1]), keys))
     return [
         {
@@ -37,7 +37,7 @@ def get_remote_config(action="Allow", keys=[]):
             "endpoints": [
                 {
                     "id": "endpoint-id",
-                    "matchingRegex": {"location": "path", "regex": "200"},
+                    "matchingRegex": {"location": location, "regex": regex},
                     "endpointConfiguration": {
                         "action": action,
                         "sensitiveKeys": built_keys,
