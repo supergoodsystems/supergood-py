@@ -166,7 +166,9 @@ class Client(object):
         try:
             url = safe_decode(url)  # we do this first so the urlparse isn't also bytes
             host_domain = urlparse(url).hostname
-            safe_headers = dict(headers)  # sometimes headers is not json serializable
+            safe_headers = (
+                {} if headers is None else dict(headers)
+            )  # sometimes headers is not json serializable
             request["metadata"] = {}
             # Check that we should cache the request
             if not self._should_ignore(
