@@ -8,6 +8,7 @@ from ..constants import REQUEST_ID_KEY
 def patch(cache_request, cache_response):
     _original_handle_request = httpx.HTTPTransport.handle_request
     _original_response_read = httpx.Response.read
+    _original_response_iter_lines = httpx.Response.iter_lines
 
     def _wrap_handle_request(
         httpTransport: httpx.HTTPTransport, request: httpx.Request
@@ -39,5 +40,25 @@ def patch(cache_request, cache_response):
         )
         return response_body
 
+    def _wrap_iter_lines(response: httpx.Response):
+        request_id = getattr(response, REQUEST_ID_KEY)
+        status_text = response.extensions.get("reason_phrase", None)
+        if status_text:
+            status_text = status_text.decode("utf-8")
+        response_parts = []
+        for line in _original_response_iter_lines(response):
+            if line:
+                response_parts.append(line)
+            yield line
+        response_body = "\n".join(response_parts)
+        cache_response(
+            request_id,
+            response_body,
+            response.headers,
+            response.status_code,
+            status_text,
+        )
+
     httpx.HTTPTransport.handle_request = _wrap_handle_request
     httpx.Response.read = _wrap_response_read
+    httpx.Response.iter_lines = _wrap_iter_lines
