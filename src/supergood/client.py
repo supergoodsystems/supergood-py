@@ -38,10 +38,14 @@ class Client(object):
         client_id=os.getenv("SUPERGOOD_CLIENT_ID"),
         client_secret_id=os.getenv("SUPERGOOD_CLIENT_SECRET"),
         base_url=os.getenv("SUPERGOOD_BASE_URL"),
+        telemetry_url=os.getenv("SUPERGOOD_TELEMETRY_URL"),
         config={},
         metadata={},
     ):
         self.base_url = base_url if base_url else DEFAULT_SUPERGOOD_BASE_URL
+        self.telemetry_url = (
+            telemetry_url if telemetry_url else DEFAULT_SUPERGOOD_TELEMETRY_URL
+        )
 
         # By default will spin up threads to handle flushing and config fetching
         #  set the appropriate environment variable to override this behavior.
@@ -70,7 +74,7 @@ class Client(object):
         self.base_config = DEFAULT_SUPERGOOD_CONFIG
         self.base_config.update(config)
 
-        self.api = Api(header_options, self.base_url)
+        self.api = Api(header_options, self.base_url, self.telemetry_url)
         self.api.set_event_sink_url(self.base_config["eventSinkEndpoint"])
         self.api.set_error_sink_url(self.base_config["errorSinkEndpoint"])
         self.api.set_config_pull_url(self.base_config["remoteConfigEndpoint"])
