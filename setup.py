@@ -27,17 +27,13 @@ setuptools.setup(
         "python-dotenv==1.0.0",
         "requests",
         "tldextract>=5",
-        "urllib3>=1.26,<2.0",
+        "urllib3>=2.0",
     ],
     extras_require={
         "test": [
-            "requests",
-            "urllib3>=1.26,<2.0",
             "pytest==7.2.1",
             "pytest_httpserver==1.0.8",
-            "python-dotenv==1.0.0",
             "Werkzeug",
-            "jsonpickle==3.0.1",
             "pytest-mock==3.10.0",
         ]
     },
