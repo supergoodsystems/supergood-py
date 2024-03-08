@@ -58,6 +58,7 @@ class Client(object):
         self.metadata = metadata
 
         authorization = f"{client_id}:{client_secret_id}"
+        self.time_format = "%Y-%m-%dT%H:%M:%S.%fZ"
 
         header_options = {
             "Accept": "application/json, text/plain, */*",
@@ -178,7 +179,7 @@ class Client(object):
                 request_body=body,
                 request_headers=safe_headers,
             ):
-                now = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+                now = datetime.utcnow().strftime(self.time_format)
                 parsed_url = urlparse(url)
                 filtered_body = (
                     ""
@@ -233,7 +234,7 @@ class Client(object):
                     "headers": filtered_headers,
                     "status": response_status,
                     "statusText": safe_decode(response_status_text),
-                    "respondedAt": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "respondedAt": datetime.utcnow().strftime(self.time_format),
                 }
                 self._response_cache[request_id] = {
                     "request": request["request"],
