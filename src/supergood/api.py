@@ -6,8 +6,14 @@ from .constants import *
 
 
 class Api(object):
-    def __init__(self, header_options, base_url=DEFAULT_SUPERGOOD_BASE_URL):
+    def __init__(
+        self,
+        header_options,
+        base_url=DEFAULT_SUPERGOOD_BASE_URL,
+        telemetry_url=DEFAULT_SUPERGOOD_TELEMETRY_URL,
+    ):
         self.base_url = base_url
+        self.telemetry_url = telemetry_url
         self.header_options = header_options
         self.event_sink_url = None
         self.error_sink_url = None
@@ -48,7 +54,7 @@ class Api(object):
 
     # Error posting
     def set_error_sink_url(self, endpoint):
-        self.error_sink_url = urljoin(self.base_url, endpoint)
+        self.error_sink_url = urljoin(self.telemetry_url, endpoint)
 
     def post_errors(self, data, exc_info, message):
         if not self.error_sink_url:

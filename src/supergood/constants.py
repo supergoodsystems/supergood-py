@@ -7,8 +7,8 @@ SIGNALS = [
 REQUEST_ID_KEY = "_supergood_request_id"
 GZIP_START_BYTES = b"\x1f\x8b"
 DEFAULT_SUPERGOOD_BYTE_LIMIT = 500000
-DEFAULT_SUPERGOOD_CONFIG_URL = "https://api.supergood.ai/config/"
 DEFAULT_SUPERGOOD_BASE_URL = "https://api.supergood.ai/"
+DEFAULT_SUPERGOOD_TELEMETRY_URL = "https://telemetry.supergood.ai"
 DEFAULT_SUPERGOOD_CONFIG = {
     "flushInterval": 1000,
     "configInterval": 10000,
