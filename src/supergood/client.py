@@ -38,10 +38,14 @@ class Client(object):
         client_id=os.getenv("SUPERGOOD_CLIENT_ID"),
         client_secret_id=os.getenv("SUPERGOOD_CLIENT_SECRET"),
         base_url=os.getenv("SUPERGOOD_BASE_URL"),
+        telemetry_url=os.getenv("SUPERGOOD_TELEMETRY_URL"),
         config={},
         metadata={},
     ):
         self.base_url = base_url if base_url else DEFAULT_SUPERGOOD_BASE_URL
+        self.telemetry_url = (
+            telemetry_url if telemetry_url else DEFAULT_SUPERGOOD_TELEMETRY_URL
+        )
 
         # By default will spin up threads to handle flushing and config fetching
         #  set the appropriate environment variable to override this behavior.
@@ -58,6 +62,7 @@ class Client(object):
         self.metadata = metadata
 
         authorization = f"{client_id}:{client_secret_id}"
+        self.time_format = "%Y-%m-%dT%H:%M:%S.%fZ"
 
         header_options = {
             "Accept": "application/json, text/plain, */*",
@@ -70,7 +75,7 @@ class Client(object):
         self.base_config = DEFAULT_SUPERGOOD_CONFIG
         self.base_config.update(config)
 
-        self.api = Api(header_options, self.base_url)
+        self.api = Api(header_options, self.base_url, self.telemetry_url)
         self.api.set_event_sink_url(self.base_config["eventSinkEndpoint"])
         self.api.set_error_sink_url(self.base_config["errorSinkEndpoint"])
         self.api.set_config_pull_url(self.base_config["remoteConfigEndpoint"])
@@ -178,7 +183,7 @@ class Client(object):
                 request_body=body,
                 request_headers=safe_headers,
             ):
-                now = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+                now = datetime.utcnow().strftime(self.time_format)
                 parsed_url = urlparse(url)
                 filtered_body = (
                     ""
@@ -233,7 +238,7 @@ class Client(object):
                     "headers": filtered_headers,
                     "status": response_status,
                     "statusText": safe_decode(response_status_text),
-                    "respondedAt": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "respondedAt": datetime.utcnow().strftime(self.time_format),
                 }
                 self._response_cache[request_id] = {
                     "request": request["request"],
