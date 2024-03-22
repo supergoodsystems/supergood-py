@@ -42,6 +42,8 @@ class Client(object):
         config={},
         metadata={},
     ):
+        # This PID is used to detect when the client is running in a forked process
+        self.main_pid = os.getpid()
         self.base_url = base_url if base_url else DEFAULT_SUPERGOOD_BASE_URL
         self.telemetry_url = (
             telemetry_url if telemetry_url else DEFAULT_SUPERGOOD_TELEMETRY_URL
@@ -241,11 +243,25 @@ class Client(object):
                     "statusText": safe_decode(response_status_text),
                     "respondedAt": datetime.utcnow().strftime(self.time_format),
                 }
-                self._response_cache[request_id] = {
-                    "request": request["request"],
-                    "response": response,
-                    "metadata": request.get("metadata", {}),
-                }
+                if os.getpid() == self.main_pid:
+                    # If we're in the main thread, push to the cache
+                    self._response_cache[request_id] = {
+                        "request": request["request"],
+                        "response": response,
+                        "metadata": request.get("metadata", {}),
+                    }
+                else:
+                    # Otherwise, flush synchronously
+                    self.sync_flush_cache(
+                        [
+                            {
+                                "request": request["request"],
+                                "response": response,
+                                "metadata": request.get("metadata", {}),
+                            }
+                        ]
+                    )
+
         except Exception:
             url = None
             if request and request.get("request", None):
@@ -366,7 +382,7 @@ class Client(object):
             except Exception:
                 # something is really messed up, just report out
                 payload = self._build_log_payload()
-            self.log.error(ERRORS["POSTING_EVENTS"], trace, payload)
+                self.log.error(ERRORS["POSTING_EVENTS"], trace, payload)
         finally:  # always occurs, even from internal returns
             for response_key in response_keys:
                 self._response_cache.pop(response_key, None)
@@ -375,3 +391,60 @@ class Client(object):
                     self._request_cache.pop(request_key, None)
             self.flush_lock.release()
             # FLUSH LOCK PROTECTION END
+
+    def sync_flush_cache(self, data) -> None:
+        """
+        If the client detects it is running in a forked process, we probably dont
+        want to spin up new threads within that fork. Instead, flush each item synchronously
+        after caching the response. This does have the effect of blocking until the flush occurs
+        """
+        if self.remote_config is None:
+            # Forked processes get a copy of the remote config (if it has been pulled) for free
+            #  however, the config fetch is expensive if it hasn't been pulled yet.
+            #  not a great solution, but for now just drop the event.
+            #  in the future we're planning on potentially writing these to disk for a cleanup job later
+            self.log.info("Config not loaded yet, cannot flush")
+            return
+
+        # don't worry about the flush lock because each flush is only handling one event
+        try:
+            # don't worry about anything on the cache except for the data provided to us
+            try:
+                if self.base_config["forceRedactAll"]:
+                    redact_all(data)
+                else:
+                    to_delete = redact_values(
+                        data,
+                        self.remote_config,
+                        self.base_config,
+                    )
+                    if to_delete:
+                        data = [
+                            item
+                            for (ind, item) in enumerate(data)
+                            if ind not in to_delete
+                        ]
+            except Exception:
+                urls = []
+                for entry in data:
+                    if entry.get("request", None):
+                        urls.append(entry.get("request").get("url"))
+                payload = self._build_log_payload(num_events=len(data), urls=urls)
+                trace = "".join(traceback.format_exc())
+                self.log.error(ERRORS["REDACTION"], trace, payload)
+            else:  # Only post if no exceptions
+                self.log.debug(f"Flushing {len(data)} items")
+                self.api.post_events(data)
+        except Exception:
+            trace = "".join(traceback.format_exc())
+            try:
+                urls = []
+                for entry in data:
+                    if entry.get("request", None):
+                        urls.append(entry.get("request").get("url"))
+                num_events = len(data)
+                payload = self._build_log_payload(num_events=num_events, urls=urls)
+            except Exception:
+                # something is really messed up, just report out
+                payload = self._build_log_payload()
+                self.log.error(ERRORS["POSTING_EVENTS"], trace, payload)
