@@ -79,6 +79,7 @@ class Client(object):
         self.api.set_event_sink_url(self.base_config["eventSinkEndpoint"])
         self.api.set_error_sink_url(self.base_config["errorSinkEndpoint"])
         self.api.set_config_pull_url(self.base_config["remoteConfigEndpoint"])
+        self.api.set_telemetry_post_url(self.base_config["telemetryPostEndpoint"])
         self.log = Logger(self.__class__.__name__, self.base_config, self.api)
 
         self.remote_config = None
@@ -342,7 +343,16 @@ class Client(object):
                 self.log.error(ERRORS["REDACTION"], trace, payload)
             else:  # Only post if no exceptions
                 self.log.debug(f"Flushing {len(data)} items")
-                # self.log.debug(data)
+                try:
+                    self.api.post_telemetry(
+                        {
+                            "numResponseCacheKeys": response_keys,
+                            "numRequestCacheKeys": request_keys,
+                        }
+                    )
+                except Exception as e:
+                    # telemetry post is nice to have, if it fails just log and ignore
+                    self.log.warning(f"Error posting telemetry: {e}")
                 self.api.post_events(data)
         except Exception:
             trace = "".join(traceback.format_exc())

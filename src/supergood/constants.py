@@ -15,6 +15,7 @@ DEFAULT_SUPERGOOD_CONFIG = {
     "eventSinkEndpoint": "/events",
     "errorSinkEndpoint": "/errors",
     "remoteConfigEndpoint": "/config",
+    "telemetryPostEndpoint": "/telemetry",
     "ignoredDomains": [],
     "forceRedactAll": False,  # redact all payloads, ignores other flags when set
     "logRequestHeaders": True,  # more fine-grained redaction for each of the request|response body|headers
@@ -40,4 +41,5 @@ ERRORS = {
     "UNKNOWN": "Client received unexpected value",
     "REDACTION": "Client failed to redact sensitive keys",
     "LOCK_STATE": "Client lock state ambiguous",
+    "POSTING_TELEMETRY": "Error posting telemetry",
 }
