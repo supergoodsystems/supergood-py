@@ -60,6 +60,7 @@ def supergood_client(request, session_mocker, monkeysession):
     session_mocker.patch(
         "supergood.api.Api.get_config", return_value=remote_config
     ).start()
+    session_mocker.patch("supergood.api.Api.post_telemetry", return_value=None).start()
 
     if not auto:
         monkeysession.setenv("SG_OVERRIDE_AUTO_FLUSH", "false")
