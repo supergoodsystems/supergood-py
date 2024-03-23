@@ -147,10 +147,12 @@ class Client(object):
         request_headers=None,
     ):
         supergood_base_url = urlparse(self.base_url).hostname
+        supergood_telemetry_url = urlparse(self.telemetry_url).hostname
         # If we haven't fetched the remote config yet, always ignore
         if (
             self.remote_config is None
             or host_domain == supergood_base_url
+            or host_domain == supergood_telemetry_url
             or host_domain in self.base_config["ignoredDomains"]
         ):
             return True
@@ -362,8 +364,8 @@ class Client(object):
                 try:
                     self.api.post_telemetry(
                         {
-                            "numResponseCacheKeys": response_keys,
-                            "numRequestCacheKeys": request_keys,
+                            "numResponseCacheKeys": len(response_keys),
+                            "numRequestCacheKeys": len(request_keys),
                         }
                     )
                 except Exception as e:
