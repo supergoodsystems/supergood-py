@@ -372,6 +372,7 @@ class Client(object):
                 self.api.post_events(data)
         except Exception:
             trace = "".join(traceback.format_exc())
+            payload = ""
             try:
                 urls = []
                 for entry in data:
@@ -382,7 +383,7 @@ class Client(object):
             except Exception:
                 # something is really messed up, just report out
                 payload = self._build_log_payload()
-                self.log.error(ERRORS["POSTING_EVENTS"], trace, payload)
+            self.log.error(ERRORS["POSTING_EVENTS"], trace, payload)
         finally:  # always occurs, even from internal returns
             for response_key in response_keys:
                 self._response_cache.pop(response_key, None)
