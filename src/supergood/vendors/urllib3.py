@@ -1,4 +1,5 @@
 import http.client
+from importlib.metadata import version
 from uuid import uuid4
 
 import urllib3
@@ -42,4 +43,6 @@ def patch(cache_request, cache_response):
         return _original_request(http_connection, method, url, body, headers, **kwargs)
 
     urllib3.HTTPResponse.read_chunked = _wrap_read_chunked
-    urllib3.connection.HTTPConnection.request = _wrap_request
+    if version("urllib3").startswith("2"):
+        # This only needs to be patched in urllib3 v2+
+        urllib3.connection.HTTPConnection.request = _wrap_request

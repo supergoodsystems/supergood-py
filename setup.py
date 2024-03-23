@@ -27,7 +27,7 @@ setuptools.setup(
         "python-dotenv==1.0.0",
         "requests",
         "tldextract>=5",
-        "urllib3>=2.0",
+        "urllib3",
     ],
     extras_require={
         "test": [
