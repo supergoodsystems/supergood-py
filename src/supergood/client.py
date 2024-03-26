@@ -49,16 +49,6 @@ class Client(object):
             telemetry_url if telemetry_url else DEFAULT_SUPERGOOD_TELEMETRY_URL
         )
 
-        # By default will spin up threads to handle flushing and config fetching
-        #  set the appropriate environment variable to override this behavior.
-        #  Primarily used during testing/debugging. Most `.env` files wont include these
-        auto_flush = True
-        auto_config = True
-        if os.getenv("SG_OVERRIDE_AUTO_FLUSH"):
-            auto_flush = False
-        if os.getenv("SG_OVERRIDE_AUTO_CONFIG"):
-            auto_config = False
-
         if "serviceName" not in metadata and "SERVICE_NAME" in os.environ:
             metadata["serviceName"] = os.getenv("SERVICE_NAME")
         self.metadata = metadata
@@ -77,6 +67,14 @@ class Client(object):
         self.base_config = DEFAULT_SUPERGOOD_CONFIG
         self.base_config.update(config)
 
+        # By default will spin up threads to handle flushing and config fetching
+        #  can be changed by setting the appropriate config variable
+        auto_flush = True
+        auto_config = True
+        if not self.base_config["runThreads"]:
+            auto_flush = False
+            auto_config = False
+
         self.api = Api(header_options, self.base_url, self.telemetry_url)
         self.api.set_event_sink_url(self.base_config["eventSinkEndpoint"])
         self.api.set_error_sink_url(self.base_config["errorSinkEndpoint"])
@@ -85,18 +83,20 @@ class Client(object):
         self.log = Logger(self.__class__.__name__, self.base_config, self.api)
 
         self.remote_config = None
-        if auto_config:
+        if auto_config and self.base_config["useRemoteConfig"]:
             self.remote_config_initial_pull = Thread(
                 daemon=True, target=self._get_config
             )
             self.remote_config_initial_pull.start()
+        elif not self.base_config["useRemoteConfig"]:
+            self.log.debug("Running supergood in remote config off mode!")
         else:
             self.log.debug("auto config off. Remember to request manually")
 
         self.remote_config_refresh_thread = RepeatingThread(
             self._get_config, self.base_config["configInterval"] / 1000
         )
-        if auto_config:
+        if auto_config and self.base_config["useRemoteConfig"]:
             self.remote_config_refresh_thread.start()
 
         self.api.set_logger(self.log)
@@ -121,7 +121,8 @@ class Client(object):
             self.log.debug("auto flush off, remember to flush manually")
 
         # On clean exit, or terminated exit - exit gracefully
-        atexit.register(self.close)
+        if self.base_config["runThreads"]:
+            atexit.register(self.close)
 
     def _build_log_payload(self, urls=None, size=None, num_events=None):
         payload = {}
@@ -148,14 +149,22 @@ class Client(object):
     ):
         supergood_base_url = urlparse(self.base_url).hostname
         supergood_telemetry_url = urlparse(self.telemetry_url).hostname
-        # If we haven't fetched the remote config yet, always ignore
+        # Logic:
+        #  case 1: if we're in remote config mode and don't have one, always ignore
+        #  case 2/3: ignore internal supergood calls to avoid death spiral
+        #  case 4: ignore anything explicitly marked to ignore
         if (
-            self.remote_config is None
+            (self.remote_config is None and self.base_config["useRemoteConfig"])
             or host_domain == supergood_base_url
             or host_domain == supergood_telemetry_url
             or host_domain in self.base_config["ignoredDomains"]
         ):
             return True
+
+        # At this point, if we're not in remote config mode we can safely return
+        #  we really only care about the ignored domains
+        if not self.base_config["useRemoteConfig"]:
+            return False
 
         vendor, endpoint = get_vendor_endpoint_from_config(
             self.remote_config,
@@ -309,11 +318,13 @@ class Client(object):
             self.log.error(ERRORS["LOCK_STATE"], trace, payload)
 
     def flush_cache(self, force=False) -> None:
-        # if we're not force flushing, and another flush is in progress, just skip
-        # if we are force flushing, block until the previous flush completes.
-        if self.remote_config is None:
+        # In remote config mode, don't flush until a remote config is fetched
+        if self.remote_config is None and self.base_config["useRemoteConfig"]:
             self.log.info("Config not loaded yet, cannot flush")
             return
+
+        # if we're not force flushing, and another flush is in progress, just skip
+        # if we are force flushing, block until the previous flush completes.
         acquired = self._take_lock(block=force)
         if acquired == False:
             self.log.info("Flush already in progress, skipping")
@@ -337,9 +348,11 @@ class Client(object):
             if force:
                 data += list(self._request_cache.values())
             try:
+                # In force redact all mode, always force redact everything
                 if self.base_config["forceRedactAll"]:
                     redact_all(data)
-                else:
+                # Otherwise, redact using the remote config in remote config mode
+                elif self.base_config["useRemoteConfig"]:
                     to_delete = redact_values(
                         data,
                         self.remote_config,
@@ -401,7 +414,7 @@ class Client(object):
         want to spin up new threads within that fork. Instead, flush each item synchronously
         after caching the response. This does have the effect of blocking until the flush occurs
         """
-        if self.remote_config is None:
+        if self.remote_config is None and self.base_config["useRemoteConfig"]:
             # Forked processes get a copy of the remote config (if it has been pulled) for free
             #  however, the config fetch is expensive if it hasn't been pulled yet.
             #  not a great solution, but for now just drop the event.
@@ -415,7 +428,7 @@ class Client(object):
             try:
                 if self.base_config["forceRedactAll"]:
                     redact_all(data)
-                else:
+                elif self.base_config["useRemoteConfig"]:
                     to_delete = redact_values(
                         data,
                         self.remote_config,
