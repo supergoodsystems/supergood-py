@@ -22,7 +22,9 @@ DEFAULT_SUPERGOOD_CONFIG = {
     "logRequestBody": True,
     "logResponseHeaders": True,
     "logResponseBody": True,
-    "ignoreRedaction": False,
+    "ignoreRedaction": False,  # ignores redaction. Lowest priority flag
+    "useRemoteConfig": True,
+    "runThreads": True,
 }
 
 ERRORS = {
