@@ -28,6 +28,7 @@ setuptools.setup(
         "requests",
         "tldextract>=5",
         "urllib3",
+        "paramiko"
     ],
     extras_require={
         "test": [
