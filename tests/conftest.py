@@ -31,6 +31,7 @@ def broken_client(broken_redaction, monkeysession):
         client_id="client_id",
         client_secret_id="client_secret_id",
         base_url="https://api.supergood.ai",
+        telemetry_url="https://telemetry.supergood.ai",
         config=config,
     )
     monkeysession.setenv("SG_OVERRIDE_AUTO_FLUSH", "false")
