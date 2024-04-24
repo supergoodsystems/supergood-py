@@ -114,6 +114,18 @@ class TestCore:
         session_mocker.patch("supergood.api.Api.post_events").start()
         supergood_client.kill()
 
+    def test_tagging(self, httpserver: HTTPServer, supergood_client):
+        with supergood_client.tagging({"key": "val"}):
+            requests.get(httpserver.url_for("/200"))
+
+        supergood_client.flush_cache()
+        assert Api.post_events.call_args is not None
+        args = Api.post_events.call_args[0][0]
+        assert args[0]["request"] is not None
+        assert args[0]["response"] is not None
+        assert args[0]["metadata"]["tags"] == {"key": "val"}
+        supergood_client.kill()
+
     def test_different_http_library(self, httpserver: HTTPServer, supergood_client):
         http = urllib3.PoolManager()
         http.request("GET", f"{TEST_BED_URL}/200")

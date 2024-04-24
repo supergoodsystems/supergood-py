@@ -2,11 +2,12 @@
 
 import atexit
 import os
+import threading
 import traceback
 from base64 import b64encode
+from contextlib import contextmanager
 from datetime import datetime
 from importlib.metadata import version
-from threading import Lock, Thread
 from urllib.parse import urlparse
 
 from dotenv import load_dotenv
@@ -42,6 +43,7 @@ class Client(object):
         config={},
         metadata={},
     ):
+        self.thread_local = threading.local()
         # This PID is used to detect when the client is running in a forked process
         self.main_pid = os.getpid()
         self.base_url = base_url if base_url else DEFAULT_SUPERGOOD_BASE_URL
@@ -84,7 +86,7 @@ class Client(object):
 
         self.remote_config = None
         if auto_config and self.base_config["useRemoteConfig"]:
-            self.remote_config_initial_pull = Thread(
+            self.remote_config_initial_pull = threading.Thread(
                 daemon=True, target=self._get_config
             )
             self.remote_config_initial_pull.start()
@@ -114,7 +116,7 @@ class Client(object):
         self.flush_thread = RepeatingThread(
             self.flush_cache, self.base_config["flushInterval"] / 1000
         )
-        self.flush_lock = Lock()
+        self.flush_lock = threading.Lock()
         if auto_flush:
             self.flush_thread.start()
         else:
@@ -123,6 +125,17 @@ class Client(object):
         # On clean exit, or terminated exit - exit gracefully
         if self.base_config["runThreads"]:
             atexit.register(self.close)
+
+    @contextmanager
+    def tagging(self, tags):
+        # tags should be a dict. wrap non-dicts
+        if not isinstance(tags, dict):
+            tags = {"tags": tags}
+        self.thread_local.current_tag = tags
+        try:
+            yield
+        finally:
+            self.thread_local.current_tag = None
 
     def _build_log_payload(self, urls=None, size=None, num_events=None):
         payload = {}
@@ -219,6 +232,9 @@ class Client(object):
                     "search": parsed_url.query,
                     "requestedAt": now,
                 }
+                tags = getattr(self.thread_local, "current_tag", None)
+                if tags is not None:
+                    request["metadata"]["tags"] = tags
                 self._request_cache[request_id] = request
         except Exception:
             payload = self._build_log_payload(
@@ -374,6 +390,7 @@ class Client(object):
                 self.log.error(ERRORS["REDACTION"], trace, payload)
             else:  # Only post if no exceptions
                 self.log.debug(f"Flushing {len(data)} items")
+                self.log.debug(data)
                 try:
                     self.api.post_telemetry(
                         {
