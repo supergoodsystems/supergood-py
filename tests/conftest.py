@@ -70,6 +70,7 @@ def supergood_client(request, session_mocker, monkeysession):
         client_id="client_id",
         client_secret_id="client_secret_id",
         base_url="https://api.supergood.ai",
+        telemetry_url="https://telemetry.supergood.ai",
         config=config,
     )
     client._get_config()
