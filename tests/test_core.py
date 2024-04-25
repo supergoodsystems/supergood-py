@@ -26,6 +26,10 @@ TEST_BED_URL = "http://supergood-testbed.herokuapp.com"
 
 
 class TestCore:
+    def test_singleton(self, supergood_client):
+        c2 = Client()
+        assert c2 is supergood_client
+
     def test_captures_all_outgoing_200_http_requests(
         self, httpserver: HTTPServer, supergood_client
     ):

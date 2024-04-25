@@ -33,6 +33,13 @@ load_dotenv()
 
 
 class Client(object):
+    # Not incredibly pythonic, but makes this class a singleton
+    def __new__(cls, *args, **kwargs):
+        if not hasattr(cls, "instance"):
+            # Create client for first time
+            cls.instance = super(Client, cls).__new__(cls)
+        return cls.instance
+
     def __init__(
         self,
         client_id=os.getenv("SUPERGOOD_CLIENT_ID"),
@@ -42,6 +49,10 @@ class Client(object):
         config={},
         metadata={},
     ):
+        # Double initializing can cause double sends to Supergood
+        if hasattr(self, "main_pid"):
+            return
+
         # This PID is used to detect when the client is running in a forked process
         self.main_pid = os.getpid()
         self.base_url = base_url if base_url else DEFAULT_SUPERGOOD_BASE_URL
