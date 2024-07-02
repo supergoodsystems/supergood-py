@@ -350,7 +350,10 @@ class Client(object):
             try:
                 # In force redact all mode, always force redact everything
                 if self.base_config["forceRedactAll"]:
-                    redact_all(data)
+                    redact_all(data, self.remote_config, by_default=False)
+                # In redact by default mode, redact any non-allowed keys
+                elif self.base_config["redactByDefault"]:
+                    redact_all(data, self.remote_config, by_default=True)
                 # Otherwise, redact using the remote config in remote config mode
                 elif self.base_config["useRemoteConfig"]:
                     to_delete = redact_values(

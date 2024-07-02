@@ -9,7 +9,7 @@ from typing import Tuple
 from pydash import get, set_
 
 from .constants import ERRORS, GZIP_START_BYTES
-from .remote_config import get_vendor_endpoint_from_config
+from .remote_config import get_allowed_keys, get_vendor_endpoint_from_config
 
 
 def hash_value(input):
@@ -100,11 +100,11 @@ def transform_key(key, replace):
         return ".".join([replace] + split[1:])
 
 
-def redact_all_helper(elem, path=[]):
+def redact_all_helper(elem, path=[], allowed=[]):
     skeys = []
     if isinstance(elem, dict):
         for key, value in elem.items():
-            new_skeys = redact_all_helper(value, path + [str(key)])
+            new_skeys = redact_all_helper(value, path + [str(key)], allowed)
             skeys += new_skeys
     elif isinstance(elem, list):
         for index, item in enumerate(elem):
@@ -114,13 +114,17 @@ def redact_all_helper(elem, path=[]):
             else:
                 new_path = path[:]
                 new_path[-1] = new_path[-1] + f"[{str(index)}]"
-            new_skeys = redact_all_helper(item, new_path)
+            new_skeys = redact_all_helper(item, new_path, allowed)
             skeys += new_skeys
     else:
+        key_path = ".".join(path)
+        if key_path in allowed:
+            # this is an allowed key. We do not want to redact it
+            return []
         (data_type, data_length) = describe_data(elem)
         skeys.append(
             {
-                "keyPath": ".".join(path),
+                "keyPath": key_path,
                 "type": data_type,
                 "length": data_length,
             }
@@ -128,9 +132,12 @@ def redact_all_helper(elem, path=[]):
     return skeys
 
 
-def redact_all(input_array):
+def redact_all(input_array, remote_config, by_default=False):
     """
-    THIS FUNCTION REDACTS ALL LEAF VALUES
+    This function is used for redaction during `forceRedactAll` and `redactByDefault`
+
+    Unlike the other redaction function, which is good at redacting just a few keys
+        this one assumes we will have to traverse most of the payload
     input_array: a dictionary mapping request id to `request, response, metadata` object
 
     data is redacted in-place
@@ -138,18 +145,29 @@ def redact_all(input_array):
 
     """
     for data in input_array:
+        metadata = data.get("metadata", {})
+        allowed_keys = []
+        if "endpointId" in metadata and "vendorId" in metadata and by_default:
+            # If we know about the endpoint, and are redacting by default, check for any allowed keys
+            allowed_keys = get_allowed_keys(
+                remote_config, metadata["vendorId"], metadata["endpointId"]
+            )
         skeys = []
         if data.get("request", None):
             req = data.get("request")
             if req.get("body", None):
-                new_skeys = redact_all_helper(req.get("body"), path=["requestBody"])
+                new_skeys = redact_all_helper(
+                    req.get("body"), path=["requestBody"], allowed=allowed_keys
+                )
                 for key in new_skeys:
                     actual = transform_key(key, "request.body")
                     set_(data, actual, None)
                 skeys += new_skeys
             if req.get("headers", None):
                 new_skeys = redact_all_helper(
-                    req.get("headers"), path=["requestHeaders"]
+                    req.get("headers"),
+                    path=["requestHeaders"],
+                    allowed=allowed_keys,
                 )
                 for key in new_skeys:
                     actual = transform_key(key, "request.headers")
@@ -158,14 +176,20 @@ def redact_all(input_array):
         if data.get("response", None):
             resp = data.get("response")
             if resp.get("body", None):
-                new_skeys = redact_all_helper(resp.get("body"), path=["responseBody"])
+                new_skeys = redact_all_helper(
+                    resp.get("body"),
+                    path=["responseBody"],
+                    allowed=allowed_keys,
+                )
                 for key in new_skeys:
                     actual = transform_key(key, "response.body")
                     set_(data, actual, None)
                 skeys += new_skeys
             if resp.get("headers", None):
                 new_skeys = redact_all_helper(
-                    resp.get("headers"), path=["responseHeaders"]
+                    resp.get("headers"),
+                    path=["responseHeaders"],
+                    allowed=allowed_keys,
                 )
                 for key in new_skeys:
                     actual = transform_key(key, "response.headers")

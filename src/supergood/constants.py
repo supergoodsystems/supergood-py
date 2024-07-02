@@ -25,6 +25,7 @@ DEFAULT_SUPERGOOD_CONFIG = {
     "ignoreRedaction": False,  # ignores redaction. Lowest priority flag
     "useRemoteConfig": True,
     "runThreads": True,
+    "redactByDefault": False,
 }
 
 ERRORS = {
