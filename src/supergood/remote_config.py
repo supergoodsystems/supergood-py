@@ -12,7 +12,7 @@ class SensitiveKey:
     """
     Key-level config
     key_path: path of key to action on
-    action: 'REDACT' (redacts value) ('HASH' and 'IGNORE' not supported for now)
+    action: 'REDACT' (redacts value) 'ALLOW' (allows value in redactByDefault mode)
     """
 
     key_path: str
@@ -155,3 +155,27 @@ def parse_remote_config_json(
         remote_config[vendor_id] = vendor_config
 
     return remote_config
+
+
+def get_allowed_keys(remote_config, vendor_id, endpoint_id):
+    # log.debug("getting allowed keys")
+    vendor_config = remote_config.get(vendor_id, None)
+    if not vendor_config:
+        # log.debug("got null vendor config")
+        return []
+    endpoints = vendor_config.endpoints
+    if not endpoints:
+        # log.debug("got null endpoints")
+        return []
+    endpoint = endpoints.get(endpoint_id, None)
+    if not endpoint:
+        # log.debug("got null endpoint")
+        return []
+    sensitive_keys = endpoint.sensitive_keys
+    if not sensitive_keys:
+        # log.debug("no sensitive keys")
+        return []
+    filtered = list(filter(lambda x: x.action == "ALLOW", sensitive_keys))
+    mapped = list(map(lambda x: x.key_path, filtered))
+    # log.debug(mapped)
+    return mapped
