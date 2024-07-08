@@ -1,6 +1,6 @@
 import dataclasses
 import json
-from typing import List
+from typing import List, Optional
 
 
 class DataclassesJSONEncoder(json.JSONEncoder):
@@ -17,6 +17,6 @@ class ServerSentEvent:
     """
 
     event: str | None
-    data: List[str]
+    data: Optional[str]
     id: str | None
     retry: int | None
