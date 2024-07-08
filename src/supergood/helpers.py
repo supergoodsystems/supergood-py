@@ -377,15 +377,8 @@ def safe_decode(input, encoding="utf-8"):
             return None
         if isinstance(input, bytes) and input[:2] == GZIP_START_BYTES:
             return gzip.decompress(input)
-        if isinstance(input, bytes):
-            return input.decode(encoding)
         if isinstance(input, str):
             return input
-        if isinstance(input, list) or isinstance(input, dict):
-            try:
-                return json.dumps(input)
-            except Exception:
-                return str(input)
         return input.decode(encoding)
     except Exception:
         return str(input)

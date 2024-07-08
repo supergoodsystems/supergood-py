@@ -388,6 +388,7 @@ class Client(object):
                     # telemetry post is nice to have, if it fails just log and ignore
                     self.log.warning(f"Error posting telemetry: {e}")
                 self.api.post_events(data)
+                print(data)
         except Exception:
             trace = "".join(traceback.format_exc())
             payload = ""
