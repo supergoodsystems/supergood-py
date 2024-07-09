@@ -146,7 +146,7 @@ class Client(object):
             payload["numberOfEvents"] = num_events
         tags = getattr(self.thread_local, "current_tag", None)
         if tags:
-            payload["metadata"]["tags"] = tags
+            payload["metadata"]["tags"] = self._format_tags(tags)
         return payload
 
     def _should_ignore(
@@ -231,7 +231,7 @@ class Client(object):
                 }
                 tags = getattr(self.thread_local, "current_tags", None)
                 if tags:
-                    request["metadata"]["tags"] = tags
+                    request["metadata"]["tags"] = self._format_tags(tags)
                 self._request_cache[request_id] = request
         except Exception:
             payload = self._build_log_payload(
@@ -481,6 +481,13 @@ class Client(object):
                 payload = self._build_log_payload()
                 self.log.error(ERRORS["POSTING_EVENTS"], trace, payload)
 
+    def _format_tags(self, tags):
+        # takes a list of tags (dicts) and rolls them up into one dictionary
+        new_tags = {}
+        for tagset in tags:
+            new_tags.update(tagset)
+        return new_tags
+
     @contextmanager
     def tagging(self, tags):
         # tags should be a KV dict of primitives, e.g. {'customer': 'Patrick'}
@@ -493,8 +500,13 @@ class Client(object):
         #  wrap non-dicts
         if not isinstance(tags, dict):
             tags = {"tags": tags}
-        self.thread_local.current_tags = tags
+        current_tags = getattr(self.thread_local, "current_tags", None)
+        if current_tags:
+            self.thread_local.current_tags.append(tags)
+        else:
+            self.thread_local.current_tags = [tags]
+        # self.thread_local.current_tags = tags
         try:
             yield
         finally:
-            self.thread_local.current_tags = None
+            self.thread_local.current_tags.pop()
