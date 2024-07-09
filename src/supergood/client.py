@@ -485,7 +485,7 @@ class Client(object):
     def tagging(self, tags):
         # tags should be a KV dict of primitives, e.g. {'customer': 'Patrick'}
         if self.uninitialized:
-            self.log.warn("Cannot tag while uninitialized, skipping")
+            # cannot tag when uninit, can't even log. Just yield
             try:
                 yield
             finally:

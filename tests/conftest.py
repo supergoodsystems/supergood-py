@@ -27,7 +27,7 @@ def broken_client(broken_redaction, monkeysession):
     broken_redaction.patch(
         "supergood.api.Api.get_config", return_value=remote_config
     ).start()
-    client = Client(
+    Client.initialize(
         client_id="client_id",
         client_secret_id="client_secret_id",
         base_url="https://api.supergood.ai",
@@ -36,9 +36,9 @@ def broken_client(broken_redaction, monkeysession):
     )
     monkeysession.setenv("SG_OVERRIDE_AUTO_FLUSH", "false")
     monkeysession.setenv("SG_OVERRIDE_AUTO_CONFIG", "false")
-    client._get_config()
-    yield client
-    client.kill()  # on exit
+    Client._get_config()
+    yield Client
+    Client.kill()  # on exit
 
 
 @pytest.fixture(scope="session")
