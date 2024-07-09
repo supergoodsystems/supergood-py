@@ -505,7 +505,6 @@ class Client(object):
             self.thread_local.current_tags.append(tags)
         else:
             self.thread_local.current_tags = [tags]
-        # self.thread_local.current_tags = tags
         try:
             yield
         finally:
