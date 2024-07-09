@@ -67,13 +67,13 @@ def supergood_client(request, session_mocker, monkeysession):
         monkeysession.setenv("SG_OVERRIDE_AUTO_FLUSH", "false")
         monkeysession.setenv("SG_OVERRIDE_AUTO_CONFIG", "false")
 
-    client = Client(
+    Client.initialize(
         client_id="client_id",
         client_secret_id="client_secret_id",
         base_url="https://api.supergood.ai",
         telemetry_url="https://telemetry.supergood.ai",
         config=config,
     )
-    client._get_config()
-    yield client
-    client.kill()  # on exit
+    Client._get_config()
+    yield Client
+    Client.kill()  # on exit

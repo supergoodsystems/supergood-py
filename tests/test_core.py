@@ -151,3 +151,18 @@ class TestCore:
         assert args[0]["response"] is not None
         assert args[0]["request"] is not None
         supergood_client.kill()
+
+    def test_tagging(self, httpserver: HTTPServer, supergood_client):
+        tags = {"m": "mini", "w": "wumbo"}
+        httpserver.expect_request("/tagging").respond_with_data(status=200)
+
+        with supergood_client.tagging(tags):
+            requests.get(httpserver.url_for("/tagging"))
+
+        supergood_client.flush_cache()
+        assert Api.post_events.call_args is not None
+        args = Api.post_events.call_args[0][0]
+        assert args[0]["request"] is not None
+        assert args[0]["response"] is not None
+        assert args[0]["metadata"] is not None
+        assert args[0]["metadata"]["tags"] == tags
