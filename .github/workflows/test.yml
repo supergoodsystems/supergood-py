@@ -45,3 +45,4 @@ jobs:
           pytest tests/redaction/test_redaction_failures.py
           pytest tests/redaction/test_redaction.py
           pytest tests/redaction/test_top_level_redaction.py
+          pytest tests/vendors/test_httpx.py
