@@ -16,7 +16,7 @@ class ServerSentEvent:
     Storage class for streamed server side events
     """
 
-    event: str | None
-    data: Optional[str]
-    id: str | None
-    retry: int | None
+    event: Optional[str]
+    data: List[str]
+    id: Optional[str]
+    retry: Optional[int]

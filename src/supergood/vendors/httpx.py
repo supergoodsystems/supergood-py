@@ -1,4 +1,5 @@
 import json
+from typing import Optional
 from uuid import uuid4
 
 import httpx
@@ -132,14 +133,14 @@ def patch(cache_request, cache_response):
         # if we got to the end but didn't get a dispatch instruction, sse was invalid
         return None
 
-    def _wrap_iter_bytes(response: httpx.Response):
+    def _wrap_iter_bytes(response: httpx.Response, chunk_size: Optional[int] = None):
         request_id = getattr(response, REQUEST_ID_KEY)
         status_text = response.extensions.get("reason_phrase", None)
         if status_text:
             status_text = status_text.decode("utf-8")
         response_chunks = []
         data = b""
-        for chunk in _original_response_iter_bytes(response):
+        for chunk in _original_response_iter_bytes(response, chunk_size):
             for line in chunk.splitlines(keepends=True):
                 data += line
                 if data.endswith((b"\r\r", b"\n\n", b"\r\n\r\n")):
