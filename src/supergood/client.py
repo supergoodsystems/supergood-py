@@ -2,11 +2,12 @@
 
 import atexit
 import os
+import threading
 import traceback
 from base64 import b64encode
+from contextlib import contextmanager
 from datetime import datetime
 from importlib.metadata import version
-from threading import Lock, Thread
 from urllib.parse import urlparse
 
 from dotenv import load_dotenv
@@ -33,7 +34,10 @@ load_dotenv()
 
 
 class Client(object):
-    def __init__(
+    def __init__(self):
+        self.uninitialized = True
+
+    def initialize(
         self,
         client_id=os.getenv("SUPERGOOD_CLIENT_ID"),
         client_secret_id=os.getenv("SUPERGOOD_CLIENT_SECRET"),
@@ -42,8 +46,11 @@ class Client(object):
         config={},
         metadata={},
     ):
+        self.uninitialized = False
         # This PID is used to detect when the client is running in a forked process
         self.main_pid = os.getpid()
+        # Storage for thread-local tags
+        self.thread_local = threading.local()
         self.base_url = base_url if base_url else DEFAULT_SUPERGOOD_BASE_URL
         self.telemetry_url = (
             telemetry_url if telemetry_url else DEFAULT_SUPERGOOD_TELEMETRY_URL
@@ -84,7 +91,7 @@ class Client(object):
 
         self.remote_config = None
         if auto_config and self.base_config["useRemoteConfig"]:
-            self.remote_config_initial_pull = Thread(
+            self.remote_config_initial_pull = threading.Thread(
                 daemon=True, target=self._get_config
             )
             self.remote_config_initial_pull.start()
@@ -114,7 +121,7 @@ class Client(object):
         self.flush_thread = RepeatingThread(
             self.flush_cache, self.base_config["flushInterval"] / 1000
         )
-        self.flush_lock = Lock()
+        self.flush_lock = threading.Lock()
         if auto_flush:
             self.flush_thread.start()
         else:
@@ -137,6 +144,9 @@ class Client(object):
             payload["metadata"].update({"payloadSize": size})
         if num_events:
             payload["numberOfEvents"] = num_events
+        tags = getattr(self.thread_local, "current_tags", None)
+        if tags:
+            payload["metadata"]["tags"] = self._format_tags(tags)
         return payload
 
     def _should_ignore(
@@ -219,6 +229,9 @@ class Client(object):
                     "search": parsed_url.query,
                     "requestedAt": now,
                 }
+                tags = getattr(self.thread_local, "current_tags", None)
+                if tags:
+                    request["metadata"]["tags"] = self._format_tags(tags)
                 self._request_cache[request_id] = request
         except Exception:
             payload = self._build_log_payload(
@@ -467,3 +480,32 @@ class Client(object):
                 # something is really messed up, just report out
                 payload = self._build_log_payload()
                 self.log.error(ERRORS["POSTING_EVENTS"], trace, payload)
+
+    def _format_tags(self, tags):
+        # takes a list of tags (dicts) and rolls them up into one dictionary
+        new_tags = {}
+        for tagset in tags:
+            new_tags.update(tagset)
+        return new_tags
+
+    @contextmanager
+    def tagging(self, tags):
+        # tags should be a KV dict of primitives, e.g. {'customer': 'Patrick'}
+        if self.uninitialized:
+            # cannot tag when uninit, can't even log. Just yield
+            try:
+                yield
+            finally:
+                return
+        #  wrap non-dicts
+        if not isinstance(tags, dict):
+            tags = {"tags": tags}
+        current_tags = getattr(self.thread_local, "current_tags", None)
+        if current_tags:
+            self.thread_local.current_tags.append(tags)
+        else:
+            self.thread_local.current_tags = [tags]
+        try:
+            yield
+        finally:
+            self.thread_local.current_tags.pop()

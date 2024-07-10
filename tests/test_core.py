@@ -151,3 +151,41 @@ class TestCore:
         assert args[0]["response"] is not None
         assert args[0]["request"] is not None
         supergood_client.kill()
+
+    def test_tagging(self, httpserver: HTTPServer, supergood_client):
+        tags = {"m": "mini", "w": "wumbo"}
+        httpserver.expect_request("/tagging").respond_with_data(status=200)
+
+        with supergood_client.tagging(tags):
+            requests.get(httpserver.url_for("/tagging"))
+
+        supergood_client.flush_cache()
+        assert Api.post_events.call_args is not None
+        args = Api.post_events.call_args[0][0]
+        assert args[0]["request"] is not None
+        assert args[0]["response"] is not None
+        assert args[0]["metadata"] is not None
+        assert args[0]["metadata"]["tags"] == tags
+
+    def test_layered_tagging(self, httpserver: HTTPServer, supergood_client):
+        outer_tag = {"m": "mini"}
+        inner_tag = {"w": "wumbo"}
+        both_tags = {"m": "mini", "w": "wumbo"}
+        httpserver.expect_request("/outer").respond_with_data(status=200)
+        httpserver.expect_request("/inner").respond_with_data(status=200)
+        httpserver.expect_request("/outeragain").respond_with_data(status=200)
+        with supergood_client.tagging(outer_tag):
+            requests.get(httpserver.url_for("/outer"))
+            with supergood_client.tagging(inner_tag):
+                requests.get(httpserver.url_for("/inner"))
+            requests.get(httpserver.url_for("/outeragain"))
+        supergood_client.flush_cache()
+        assert Api.post_events.call_args is not None
+        args = Api.post_events.call_args[0][0]
+        assert len(args) == 3
+        # First call, tag shouldbe only the outer tag
+        assert args[0]["metadata"]["tags"] == outer_tag
+        # Second call, should have both
+        assert args[1]["metadata"]["tags"] == both_tags
+        # Third call, back to only outer
+        assert args[2]["metadata"]["tags"] == outer_tag

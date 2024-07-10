@@ -1,4 +1,5 @@
 .env
+venv/
 test/db.json
 test/routes.json
 dist/
