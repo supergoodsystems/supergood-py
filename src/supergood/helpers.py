@@ -1,6 +1,7 @@
 import gzip
 import hashlib
 import json
+import re
 import sys
 from base64 import b64encode
 from typing import Tuple
@@ -117,8 +118,10 @@ def redact_all_helper(elem, path=[], allowed=[]):
             skeys += new_skeys
     else:
         key_path = ".".join(path)
-        if key_path in allowed:
-            # this is an allowed key. We do not want to redact it
+        # check to see if the generic keypath (no array indexes) is an allowed key
+        generic_keypath = re.sub(r"\[\d+\]", "[]", key_path)
+        if generic_keypath in allowed:
+            # do not mark allowed keys to be redacted
             return []
         (data_type, data_length) = describe_data(elem)
         skeys.append(
