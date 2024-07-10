@@ -144,7 +144,7 @@ class Client(object):
             payload["metadata"].update({"payloadSize": size})
         if num_events:
             payload["numberOfEvents"] = num_events
-        tags = getattr(self.thread_local, "current_tag", None)
+        tags = getattr(self.thread_local, "current_tags", None)
         if tags:
             payload["metadata"]["tags"] = self._format_tags(tags)
         return payload
