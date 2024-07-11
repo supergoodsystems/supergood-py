@@ -19,7 +19,7 @@ Initialize the Supergood client at the root of your application, or anywhere you
 ```python
 from supergood import Client
 
-Client()
+Client.initialize()
 ```
 
 **Passing keys**
@@ -31,7 +31,7 @@ Replace `<CLIENT_ID>` and `<CLIENT_SECRET>` with the API keys you generated in t
 ```python
 from supergood import Client
 
-Client(client_id="<CLIENT_ID>", client_secret_id="<CLIENT_SECRET>")
+Client.initialize(client_id="<CLIENT_ID>", client_secret_id="<CLIENT_SECRET>")
 ```
 
 Note: If your application makes use of the `multiprocessing` library to make API calls, you'll need to initialize a client for each `Process`.&#x20;
