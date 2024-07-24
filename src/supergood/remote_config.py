@@ -96,9 +96,11 @@ def get_vendor_endpoint_from_config(
     vendor_config = next(
         (vcfg for vcfg in remote_config.values() if vcfg.domain in search), None
     )
+    compare_method = method.lower() if method else None
 
     def match(endpoint):
-        return endpoint.method == method and endpoint.regex.search(
+        test_method = endpoint.method.lower() if endpoint.method else None
+        return test_method == compare_method and endpoint.regex.search(
             get_endpoint_test_val(
                 location=endpoint.location,
                 url=url,
