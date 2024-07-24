@@ -19,6 +19,7 @@ class TestRemoteConfig:
         assert endpoint_config.location == "path"
         assert endpoint_config.action == "Allow"
         assert endpoint_config.sensitive_keys == []
+        assert endpoint_config.method.lower() == "get"
 
     def test_client_ignores_before_config(self, httpserver, supergood_client):
         # Not a perfect way of simulating it but good enough

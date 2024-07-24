@@ -347,6 +347,7 @@ def redact_values(input_array, remote_config, base_config):
             _, endpoint = get_vendor_endpoint_from_config(
                 remote_config,
                 url=data["request"].get("url"),
+                method=data["request"].get("method"),
                 request_body=data["request"]["body"],
                 request_headers=data["request"]["headers"],
             )
