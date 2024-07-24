@@ -30,6 +30,7 @@ class EndpointConfiguration:
     """
 
     endpoint_id: str
+    method: str
     regex: re.Pattern
     location: str
     action: str
@@ -79,6 +80,7 @@ def get_endpoint_test_val(
 def get_vendor_endpoint_from_config(
     remote_config,
     url=None,
+    method=None,
     request_body=None,
     request_headers=None,
 ) -> Tuple[Union[None, VendorConfiguration], Union[None, EndpointConfiguration]]:
@@ -94,20 +96,20 @@ def get_vendor_endpoint_from_config(
     vendor_config = next(
         (vcfg for vcfg in remote_config.values() if vcfg.domain in search), None
     )
+
+    def match(endpoint):
+        return endpoint.method == method and endpoint.regex.search(
+            get_endpoint_test_val(
+                location=endpoint.location,
+                url=url,
+                request_body=request_body,
+                request_headers=request_headers,
+            )
+        )
+
     if vendor_config:
         return vendor_config, next(
-            (
-                ep
-                for ep in vendor_config.endpoints.values()
-                if ep.regex.search(
-                    get_endpoint_test_val(
-                        location=ep.location,
-                        url=url,
-                        request_body=request_body,
-                        request_headers=request_headers,
-                    )
-                )
-            ),
+            (ep for ep in vendor_config.endpoints.values() if match(ep)),
             None,
         )
     else:
@@ -141,6 +143,7 @@ def parse_remote_config_json(
             endpoints.append(
                 EndpointConfiguration(
                     endpoint.get("id"),
+                    endpoint.get("method"),
                     regex,
                     matchingRegex.get("location"),
                     action,

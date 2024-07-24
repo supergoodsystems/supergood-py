@@ -154,6 +154,7 @@ class Client(object):
         host_domain,
         metadata,
         url=None,
+        method=None,
         request_body=None,
         request_headers=None,
     ):
@@ -179,6 +180,7 @@ class Client(object):
         vendor, endpoint = get_vendor_endpoint_from_config(
             self.remote_config,
             url=url,
+            method=method,
             request_body=request_body,
             request_headers=request_headers,
         )
@@ -200,10 +202,12 @@ class Client(object):
             )  # sometimes headers is not json serializable
             request["metadata"] = {}
             # Check that we should cache the request
+            parsed_method = safe_decode(method)
             if not self._should_ignore(
                 host_domain,
                 request["metadata"],  # we store endpoint id in metadata
                 url=url,
+                method=parsed_method,
                 request_body=body,
                 request_headers=safe_headers,
             ):
@@ -221,7 +225,7 @@ class Client(object):
                 )
                 request["request"] = {
                     "id": request_id,
-                    "method": safe_decode(method),
+                    "method": parsed_method,
                     "url": url,
                     "body": filtered_body,
                     "headers": filtered_headers,
