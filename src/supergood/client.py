@@ -108,7 +108,7 @@ class Client(object):
         patch_aiohttp(self._cache_request, self._cache_response)
         patch_httpx(self._cache_request, self._cache_response)
 
-        self.flush_thread = Worker(self.flush_cache_alt)
+        self.flush_thread = Worker(self.flush_cache)
         if auto_flush:
             self.flush_thread.start()
         else:
