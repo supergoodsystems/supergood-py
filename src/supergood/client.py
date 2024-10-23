@@ -118,7 +118,11 @@ class Client(object):
         atexit.register(self.close)
 
     def close(self) -> None:
-        self.log.debug("Closing client auto-flush, force flushing remaining cache")
+        try:
+            self.log.debug("Closing client auto-flush, force flushing remaining cache")
+        except ValueError:
+            # logfile is already closed, cannot log
+            pass
         self.flush_thread.flush()
         self.flush_thread.kill()
         self.remote_config_thread.cancel()

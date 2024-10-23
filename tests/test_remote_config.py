@@ -27,11 +27,9 @@ class TestRemoteConfig:
         httpserver.expect_request("/200").respond_with_json({"key": "val"})
         requests.get(httpserver.url_for("/200"))
         assert supergood_client._request_cache == {}
-        assert supergood_client._response_cache == {}
         supergood_client._get_config()  # Now there's a config
         httpserver.expect_request("/200").respond_with_json({"key": "val"})
         requests.get(httpserver.url_for("/200"))
-        supergood_client.flush_cache()
-        args = Api.post_events.call_args[0][0]
+        args = supergood_client.flush_thread.append.call_args[0][0]
         assert len(args) == 1
-        assert args[0]["response"]["body"] == {"key": "val"}
+        assert (list(args.values()))[0]["response"]["body"] == {"key": "val"}

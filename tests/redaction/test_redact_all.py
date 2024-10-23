@@ -29,7 +29,8 @@ class TestRedactAll:
             }
         )
         requests.get(httpserver.url_for("/200"))
-        supergood_client.flush_cache()
+        entries = supergood_client.flush_thread.append.call_args[0][0]
+        supergood_client.flush_cache(entries)
         args = Api.post_events.call_args[0][0]
         response_body = args[0]["response"]["body"]
         metadata = args[0]["metadata"]
