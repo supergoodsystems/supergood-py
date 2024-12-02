@@ -30,6 +30,10 @@ class Api(object):
     # Telemetry posts are treated more as fire and forget. If they fail, no big deal
     #  this metadata primarily helps supergood debug remote issues, it's not used
     #  for anomaly/usage monitoring
+    # 3 outcomes:
+    #  - raises an error: encountered a non-recoverable error
+    #  - returns False: encountered a likely transient error
+    #  - returns valid JSON
     def post_telemetry(self, payload):
         if not self.telemetry_post_url:
             raise Exception(ERRORS["UNINITIALIZED"])
@@ -39,10 +43,17 @@ class Api(object):
         if response.status_code == 401:
             raise Exception(ERRORS["UNAUTHORIZED"])
         if response.status_code != 200 and response.status_code != 201:
-            raise Exception(ERRORS["POSTING_TELEMETRY"])
+            self.log.warning(
+                f"[Supergood] Got non-2xx status code {response.status_code} when posting telemetry"
+            )
+            return False
         return response.json()
 
     # Remote config fetching
+    # 3 outcomes:
+    #  - raises an error: encountered a non-recoverable error
+    #  - returns False: encountered a likely transient error
+    #  - returns valid JSON
     def set_config_pull_url(self, endpoint):
         self.config_pull_url = urljoin(self.base_url, endpoint)
 
@@ -53,13 +64,20 @@ class Api(object):
         if response.status_code == 401:
             raise Exception(ERRORS["UNAUTHORIZED"])
         elif response.status_code != 200:
-            raise Exception(ERRORS["FETCHING_CONFIG"])
+            self.log.warning(
+                f"[Supergood] Got non-2xx status code {response.status_code} when getting config"
+            )
+            return False
         return response.json()
 
     # Event posting
     def set_event_sink_url(self, endpoint):
         self.event_sink_url = urljoin(self.base_url, endpoint)
 
+    # 3 outcomes:
+    #  - raises an error: encountered a non-recoverable error
+    #  - returns False: encountered a likely transient error
+    #  - returns valid JSON
     def post_events(self, payload):
         if not self.event_sink_url:
             raise Exception(ERRORS["UNINITIALIZED"])
@@ -69,7 +87,10 @@ class Api(object):
         if response.status_code == 401:
             raise Exception(ERRORS["UNAUTHORIZED"])
         if response.status_code != 200 and response.status_code != 201:
-            raise Exception(ERRORS["POSTING_EVENTS"])
+            self.log.warning(
+                f"[Supergood] Got non-2xx status code {response.status_code} when posting events"
+            )
+            return False
         return response.json()
 
     # Error posting

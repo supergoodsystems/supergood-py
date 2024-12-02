@@ -294,7 +294,13 @@ class Client(object):
     def _get_config(self) -> None:
         try:
             raw_config = self.api.get_config()
-            self.remote_config = parse_remote_config_json(raw_config)
+            if raw_config is False:
+                # we failed to pull the config. A refetch will be attempted shortly
+                self.log.warning(
+                    "[Supergood] Config fetch timed out. Fetch will be retried"
+                )
+            else:
+                self.remote_config = parse_remote_config_json(raw_config)
         except Exception:
             if self.remote_config:
                 self.log.warning("Failed to update remote config")
