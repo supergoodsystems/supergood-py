@@ -24,9 +24,10 @@ class TestLocationRequestHeaders:
             }
         )
         requests.get(httpserver.url_for("/200"), headers={"X-test": "scoobydoo"})
-        supergood_client.flush_cache()
-        assert Api.post_events.call_args is None
+        entries = supergood_client.flush_thread.append.call_args
+        assert entries is None
         requests.get(httpserver.url_for("/200"), headers={"X-test": "scrappydootoo"})
-        supergood_client.flush_cache()
+        entries = supergood_client.flush_thread.append.call_args[0][0]
+        supergood_client.flush_cache(entries)
         args = Api.post_events.call_args[0][0]
         assert len(args) == 1

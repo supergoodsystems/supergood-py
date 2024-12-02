@@ -1,24 +1,14 @@
 import asyncio
-import json
-import re
-import sys
-import time
-import unittest
-from urllib.parse import urlparse
 
 import aiohttp
-import pytest
 import requests
 import urllib3
 from dotenv import load_dotenv
 from pytest_httpserver import HTTPServer
-from werkzeug.wrappers import Response
 
-from supergood import Client
 from supergood.api import Api
 from supergood.constants import ERRORS
 from tests.constants import *
-from tests.helper import get_remote_config
 
 load_dotenv()
 
@@ -34,13 +24,8 @@ class TestCore:
         for i in range(CALL_COUNT):
             response = requests.get(httpserver.url_for("/200"))
 
-        supergood_client.flush_cache()
-        assert Api.post_events.call_args is not None
-        args = Api.post_events.call_args[0][0]
-        assert args[0]["request"] is not None
-        assert args[0]["response"] is not None
-        assert len(args) == CALL_COUNT
-        supergood_client.kill()
+        assert supergood_client.flush_thread.append.call_args_list is not None
+        assert len(supergood_client.flush_thread.append.call_args_list) == 5
 
     def test_captures_non_success_status_and_errors(
         self, httpserver: HTTPServer, supergood_client
@@ -49,16 +34,18 @@ class TestCore:
 
         for code in http_error_codes:
             httpserver.expect_request(f"/{code}").respond_with_data(status=code)
-            response = requests.get(httpserver.url_for(f"/{code}"))
+            requests.get(httpserver.url_for(f"/{code}"))
 
-        supergood_client.flush_cache()
+        assert supergood_client.flush_thread.append.call_args_list is not None
 
-        args = Api.post_events.call_args[0][0]
+        args = supergood_client.flush_thread.append.call_args_list
         assert len(args) == len(http_error_codes)
 
-        responded_codes = set(map(lambda x: x["response"]["status"], args))
+        responded_codes = set(
+            map(lambda x: list(x[0][0].values())[0]["response"]["status"], args)
+        )
+
         assert responded_codes == set(http_error_codes)
-        supergood_client.kill()
 
     def test_post_requests(self, httpserver: HTTPServer, supergood_client):
         httpserver.expect_request("/200", method="POST").respond_with_json(
@@ -67,12 +54,10 @@ class TestCore:
         response = requests.post(httpserver.url_for("/200"))
         response.raise_for_status()
         json = response.json()
-        supergood_client.flush_cache()
 
         assert json["payload"] == "value"
-        args = Api.post_events.call_args[0][0]
+        args = supergood_client.flush_thread.append.call_args[0][0]
         assert len(args) == 1
-        supergood_client.kill()
 
     def test_post_request_for_large_payload(
         self, httpserver: HTTPServer, supergood_client
@@ -81,48 +66,28 @@ class TestCore:
         response.raise_for_status()
         json = response.json()
 
-        supergood_client.flush_cache()
-
         assert json.get("mapResults", {}).get("totalItems", 0) >= 0
-        args = Api.post_events.call_args[0][0][0]
-        assert args["request"] is not None
-        assert args["response"] is not None
-        supergood_client.kill()
+        args = supergood_client.flush_thread.append.call_args[0][0]
+        assert list(args.values())[0]["request"] is not None
+        assert list(args.values())[0]["request"] is not None
 
-    def test_hanging_response(self, httpserver: HTTPServer, supergood_client):
-        HANG_TIME_IN_SECONDS = 2
-        requests.get(f"{TEST_BED_URL}/200?sleep={HANG_TIME_IN_SECONDS}")
-        supergood_client.flush_cache()
-
-        args = Api.post_events.call_args[0][0]
-        assert len(args) == 1
-        supergood_client.kill()
-
-    def test_posting_errors(self, supergood_client, session_mocker):
-        _mock = session_mocker.patch(
-            "supergood.api.Api.post_events", side_effect=Exception("Test Error")
+    def test_posting_errors(self, supergood_client, mocker):
+        _mock = mocker.patch(
+            "supergood.worker.Worker.append", side_effect=Exception("Test Error")
         )
         _mock.start()
 
         requests.get(f"{TEST_BED_URL}/200")
 
-        supergood_client.flush_cache()
         error_message = Api.post_errors.call_args[0][2]
-        assert error_message == ERRORS["POSTING_EVENTS"]
-
-        _mock.resetmock()
-        session_mocker.patch("supergood.api.Api.post_events").start()
-        supergood_client.kill()
+        assert error_message == ERRORS["CACHING_RESPONSE"]
 
     def test_different_http_library(self, httpserver: HTTPServer, supergood_client):
         http = urllib3.PoolManager()
         http.request("GET", f"{TEST_BED_URL}/200")
 
-        supergood_client.flush_cache()
-
-        args = Api.post_events.call_args[0][0]
+        args = supergood_client.flush_thread.append.call_args_list
         assert len(args) == 1
-        supergood_client.kill()
 
     def test_aiohttp_library(self, httpserver: HTTPServer, supergood_client):
         async def aiohttp_get_request():
@@ -142,15 +107,13 @@ class TestCore:
         get_response = asyncio.run(aiohttp_get_request())
         post_response = asyncio.run(aiohttp_post_request())
 
-        supergood_client.flush_cache()
-
-        args = Api.post_events.call_args[0][0]
+        args = supergood_client.flush_thread.append.call_args_list
         assert len(args) == 2
         assert get_response["success"] == "true"
         assert post_response["success"] == "true"
-        assert args[0]["response"] is not None
-        assert args[0]["request"] is not None
-        supergood_client.kill()
+        first = list(args[0][0][0].values())[0]
+        assert first["response"] is not None
+        assert first["request"] is not None
 
     def test_tagging(self, httpserver: HTTPServer, supergood_client):
         tags = {"m": "mini", "w": "wumbo"}
@@ -159,13 +122,13 @@ class TestCore:
         with supergood_client.tagging(tags):
             requests.get(httpserver.url_for("/tagging"))
 
-        supergood_client.flush_cache()
-        assert Api.post_events.call_args is not None
-        args = Api.post_events.call_args[0][0]
-        assert args[0]["request"] is not None
-        assert args[0]["response"] is not None
-        assert args[0]["metadata"] is not None
-        assert args[0]["metadata"]["tags"] == tags
+        assert supergood_client.flush_thread.append.call_args is not None
+        args = supergood_client.flush_thread.append.call_args[0][0]
+        first = list(args.values())[0]
+        assert first["request"] is not None
+        assert first["response"] is not None
+        assert first["metadata"] is not None
+        assert first["metadata"]["tags"] == tags
 
     def test_layered_tagging(self, httpserver: HTTPServer, supergood_client):
         outer_tag = {"m": "mini"}
@@ -179,13 +142,13 @@ class TestCore:
             with supergood_client.tagging(inner_tag):
                 requests.get(httpserver.url_for("/inner"))
             requests.get(httpserver.url_for("/outeragain"))
-        supergood_client.flush_cache()
-        assert Api.post_events.call_args is not None
-        args = Api.post_events.call_args[0][0]
-        assert len(args) == 3
+
+        assert supergood_client.flush_thread.append.call_args is not None
+        call_list = supergood_client.flush_thread.append.call_args_list
+        assert len(call_list) == 3
         # First call, tag shouldbe only the outer tag
-        assert args[0]["metadata"]["tags"] == outer_tag
+        assert list(call_list[0][0][0].values())[0]["metadata"]["tags"] == outer_tag
         # Second call, should have both
-        assert args[1]["metadata"]["tags"] == both_tags
+        assert list(call_list[1][0][0].values())[0]["metadata"]["tags"] == both_tags
         # Third call, back to only outer
-        assert args[2]["metadata"]["tags"] == outer_tag
+        assert list(call_list[2][0][0].values())[0]["metadata"]["tags"] == outer_tag

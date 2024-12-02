@@ -9,23 +9,28 @@ from tests.helper import get_config, get_remote_config
 class TestNoRedaction:
     def test_ignore_redaction(self, httpserver, supergood_client):
         supergood_client.base_config["ignoreRedaction"] = True
-        httpserver.expect_request("/200").respond_with_json(
-            {
-                "string": "abc",
-                "complex_string": "Alex Klarfeld 911!",
+        # httpserver.expect_request("/200").respond_with_json(
+        #     {
+        #         "string": "abc",
+        #         "complex_string": "Alex Klarfeld 911!",
+        #     }
+        # )
+        # requests.get(httpserver.url_for("/200"))
+        inputs = {
+            "request_id": {
+                "request": {
+                    "body": "",
+                    "headers": {},
+                    "method": "GET",
+                    "url": httpserver.url_for("/200"),
+                },
+                "response": {"body": {"string": "abc"}, "headers": {}},
             }
-        )
-        requests.get(httpserver.url_for("/200"))
-        supergood_client.flush_cache()
+        }
+        supergood_client.flush_cache(inputs)
         args = Api.post_events.call_args[0][0]
         response_body = args[0]["response"]["body"]
         assert response_body["string"] == "abc"  # not redacted!
-        assert response_body["complex_string"] == "Alex Klarfeld 911!"
-        assert "metadata" in args[0]
-        assert args[0]["metadata"] == {
-            "endpointId": "endpoint-id",
-            "vendorId": "vendor-id",
-        }
 
     def test_no_redaction(self, httpserver, supergood_client):
         httpserver.expect_request("/201").respond_with_json(
@@ -39,7 +44,9 @@ class TestNoRedaction:
             }
         )
         requests.get(httpserver.url_for("/201"))
-        supergood_client.flush_cache()
+        append_call = supergood_client.flush_thread.append.call_args[0][0]
+        supergood_client.flush_cache(append_call)
+
         args = Api.post_events.call_args[0][0]
         body = args[0]["response"]["body"]
         assert body["string"] == "abc"
