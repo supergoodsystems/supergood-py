@@ -35,6 +35,7 @@ jobs:
           pytest tests/test_core.py
           pytest tests/test_ignored_domains.py
           pytest tests/test_remote_config.py
+          pytest tests/test_repeating_thread.py
           pytest tests/caching/test_location_request_body.py
           pytest tests/caching/test_location_request_headers.py
           pytest tests/redaction/test_no_redaction.py
