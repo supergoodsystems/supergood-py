@@ -23,16 +23,17 @@ def patch(cache_request, cache_response):
             response_bytes.append(line)
             yield line
 
-        request_id = getattr(response_object, REQUEST_ID_KEY)
-        response_headers = _original_getheaders(response_object)
-        response_body = b"".join(response_bytes)
-        cache_response(
-            request_id=request_id,
-            response_body=response_body,
-            response_headers=response_headers,
-            response_status=response_object.status,
-            response_status_text=response_object.reason,
-        )
+        request_id = getattr(response_object, REQUEST_ID_KEY, None)
+        if request_id is not None:
+            response_headers = _original_getheaders(response_object)
+            response_body = b"".join(response_bytes)
+            cache_response(
+                request_id=request_id,
+                response_body=response_body,
+                response_headers=response_headers,
+                response_status=response_object.status,
+                response_status_text=response_object.reason,
+            )
 
     def _wrap_request(http_connection, method, url, body=None, headers=None, **kwargs):
         request_id = str(uuid4())

@@ -15,7 +15,9 @@ def patch(cache_request, cache_response):
     def _wrap_read(httpResponse, amt=None):
         response_object = httpResponse
         response_body = _original_read(httpResponse, amt)
-        request_id = getattr(response_object, REQUEST_ID_KEY)
+        request_id = getattr(response_object, REQUEST_ID_KEY, None)
+        if request_id is None:
+            return response_body
         response_headers = _original_getheaders(httpResponse)
         response_status = response_object.status
         response_status_text = response_object.reason

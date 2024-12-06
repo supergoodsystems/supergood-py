@@ -46,6 +46,7 @@ class Client(object):
         config={},
         metadata={},
     ):
+        print("steve is testing")
         self.uninitialized = False
         # This PID is used to detect when the client is running in a forked process
         self.main_pid = os.getpid()
@@ -314,7 +315,9 @@ class Client(object):
     def _get_config(self) -> None:
         try:
             raw_config = self.api.get_config()
-            self.remote_config = parse_remote_config_json(raw_config)
+            if raw_config is not None:
+                # non-exception erroring / warning is handled by the API
+                self.remote_config = parse_remote_config_json(raw_config)
         except Exception:
             if self.remote_config:
                 self.log.warning("Failed to update remote config")
@@ -448,6 +451,8 @@ class Client(object):
             try:
                 if self.base_config["forceRedactAll"]:
                     redact_all(data)
+                elif self.base_config["redactByDefault"]:
+                    redact_all(data, self.remote_config, by_default=True)
                 elif self.base_config["useRemoteConfig"]:
                     to_delete = redact_values(
                         data,

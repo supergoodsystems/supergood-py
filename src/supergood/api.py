@@ -19,6 +19,7 @@ class Api(object):
         self.error_sink_url = None
         self.config_pull_url = None
         self.telemetry_post_url = None
+        self.log = None
 
     def set_logger(self, logger):
         self.log = logger
@@ -39,7 +40,11 @@ class Api(object):
         if response.status_code == 401:
             raise Exception(ERRORS["UNAUTHORIZED"])
         if response.status_code != 200 and response.status_code != 201:
-            raise Exception(ERRORS["POSTING_TELEMETRY"])
+            if self.log:
+                self.log.warning(
+                    f"[Supergood] Got non-2xx status code {response.status_code} on telemetry post"
+                )
+            return None
         return response.json()
 
     # Remote config fetching
@@ -53,7 +58,11 @@ class Api(object):
         if response.status_code == 401:
             raise Exception(ERRORS["UNAUTHORIZED"])
         elif response.status_code != 200:
-            raise Exception(ERRORS["FETCHING_CONFIG"])
+            if self.log:
+                self.log.warning(
+                    f"[Supergood] Got non-2xx status code {response.status_code} on config get"
+                )
+            return None
         return response.json()
 
     # Event posting
@@ -69,7 +78,11 @@ class Api(object):
         if response.status_code == 401:
             raise Exception(ERRORS["UNAUTHORIZED"])
         if response.status_code != 200 and response.status_code != 201:
-            raise Exception(ERRORS["POSTING_EVENTS"])
+            if self.log:
+                self.log.warning(
+                    f"[Supergood] Got non-2xx status code {response.status_code} on event post"
+                )
+            return None
         return response.json()
 
     # Error posting
