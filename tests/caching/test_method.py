@@ -29,12 +29,11 @@ class TestMethod:
         )
         # First call is ignored due to matching the ignored POST methods
         assert response1.json()["string"] == "abc"
-        entries = supergood_client.flush_thread.append.call_args
-        assert entries is None
+        supergood_client.flush_cache()
+        assert Api.post_events.call_args is None
         response2 = requests.request(method="get", url=httpserver.url_for("/200"))
         # Second call is cached and flushed because it does not match (i.e. is a new endpoint)
         assert response2.json()["string"] == "def"
-        entries = supergood_client.flush_thread.append.call_args[0][0]
-        supergood_client.flush_cache(entries)
+        supergood_client.flush_cache()
         args = Api.post_events.call_args[0][0]
         assert len(args) == 1

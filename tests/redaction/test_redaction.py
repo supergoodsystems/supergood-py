@@ -33,8 +33,7 @@ class TestRedaction:
             }
         )
         requests.get(httpserver.url_for("/200"))
-        entries = supergood_client.flush_thread.append.call_args[0][0]
-        supergood_client.flush_cache(entries)
+        supergood_client.flush_cache()
         args = Api.post_events.call_args[0][0]
         response_body = args[0]["response"]["body"]
         metadata = args[0]["metadata"]
@@ -57,8 +56,7 @@ class TestRedaction:
         }
         httpserver.expect_request("/200").respond_with_json(response_json)
         requests.get(httpserver.url_for("/200"))
-        entries = supergood_client.flush_thread.append.call_args[0][0]
-        supergood_client.flush_cache(entries)
+        supergood_client.flush_cache()
         args = Api.post_events.call_args[0][0]
         body = args[0]["response"]["body"]
         for key in response_json:

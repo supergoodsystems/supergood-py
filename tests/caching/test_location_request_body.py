@@ -28,15 +28,11 @@ class TestLocationRequestBody:
             url=httpserver.url_for("/200"),
             data="blah scoobydoobydoo blah",
         )
-        # verify that the event was not appended to the worker
-        entries = supergood_client.flush_thread.append.call_args
-        assert entries is None
+        supergood_client.flush_cache()
         assert Api.post_events.call_args is None
         requests.request(
             method="get", url=httpserver.url_for("/200"), data="blah scrappydootoo blah"
         )
-        # in this case the event _was_ added to the worker
-        entries = supergood_client.flush_thread.append.call_args[0][0]
-        supergood_client.flush_cache(entries)
+        supergood_client.flush_cache()
         args = Api.post_events.call_args[0][0]
         assert len(args) == 1
