@@ -46,7 +46,6 @@ class Client(object):
         config={},
         metadata={},
     ):
-        print("steve is testing")
         self.uninitialized = False
         # This PID is used to detect when the client is running in a forked process
         self.main_pid = os.getpid()
