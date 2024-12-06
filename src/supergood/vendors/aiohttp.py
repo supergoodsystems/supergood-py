@@ -22,11 +22,13 @@ def patch(cache_request, cache_response):
         return response
 
     async def _wrap_read(clientResponse):
-        request_id = getattr(clientResponse, REQUEST_ID_KEY)
+        request_id = getattr(clientResponse, REQUEST_ID_KEY, None)
+        response_body = await _original_read(clientResponse)
+        if request_id is None:
+            return response_body
         response_headers = clientResponse.headers
         response_status = clientResponse.status
         response_status_text = clientResponse.reason
-        response_body = await _original_read(clientResponse)
 
         cache_response(
             request_id,

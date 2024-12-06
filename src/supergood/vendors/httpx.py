@@ -51,7 +51,9 @@ def patch(cache_request, cache_response):
 
     async def _wrap_response_aread(response: httpx.Response):
         response_body = await _original_response_aread(response)
-        request_id = getattr(response, REQUEST_ID_KEY)
+        request_id = getattr(response, REQUEST_ID_KEY, None)
+        if request_id is None:
+            return response_body
         status_text = response.extensions.get("reason_phrase", None)
         if status_text:
             status_text = status_text.decode("utf-8")
@@ -66,7 +68,9 @@ def patch(cache_request, cache_response):
 
     def _wrap_response_read(response: httpx.Response):
         response_body = _original_response_read(response)
-        request_id = getattr(response, REQUEST_ID_KEY)
+        request_id = getattr(response, REQUEST_ID_KEY, None)
+        if request_id is None:
+            return response_body
         status_text = response.extensions.get("reason_phrase", None)
         if status_text:
             status_text = status_text.decode("utf-8")
@@ -80,7 +84,7 @@ def patch(cache_request, cache_response):
         return response_body
 
     def _wrap_iter_lines(response: httpx.Response):
-        request_id = getattr(response, REQUEST_ID_KEY)
+        request_id = getattr(response, REQUEST_ID_KEY, None)
         status_text = response.extensions.get("reason_phrase", None)
         if status_text:
             status_text = status_text.decode("utf-8")
@@ -89,17 +93,19 @@ def patch(cache_request, cache_response):
             if line:
                 response_parts.append(line)
             yield line
-        response_body = "\n".join(response_parts)
-        cache_response(
-            request_id,
-            response_body,
-            response.headers,
-            response.status_code,
-            status_text,
-        )
+        if request_id is not None:
+            # This only happens if we successfully cached the request
+            response_body = "\n".join(response_parts)
+            cache_response(
+                request_id,
+                response_body,
+                response.headers,
+                response.status_code,
+                status_text,
+            )
 
     async def _wrap_aiter_lines(response: httpx.Response):
-        request_id = getattr(response, REQUEST_ID_KEY)
+        request_id = getattr(response, REQUEST_ID_KEY, None)
         status_text = response.extensions.get("reason_phrase", None)
         if status_text:
             status_text = status_text.decode("utf-8")
@@ -108,14 +114,15 @@ def patch(cache_request, cache_response):
             if line:
                 response_parts.append(line)
             yield line
-        response_body = "\n".join(response_parts)
-        cache_response(
-            request_id,
-            response_body,
-            response.headers,
-            response.status_code,
-            status_text,
-        )
+        if request_id is not None:
+            response_body = "\n".join(response_parts)
+            cache_response(
+                request_id,
+                response_body,
+                response.headers,
+                response.status_code,
+                status_text,
+            )
 
     def _parse_sse(chunk: str):
         data = []
@@ -155,7 +162,7 @@ def patch(cache_request, cache_response):
         return None
 
     def _wrap_iter_bytes(response: httpx.Response, chunk_size: Optional[int] = None):
-        request_id = getattr(response, REQUEST_ID_KEY)
+        request_id = getattr(response, REQUEST_ID_KEY, None)
         status_text = response.extensions.get("reason_phrase", None)
         if status_text:
             status_text = status_text.decode("utf-8")
@@ -176,25 +183,27 @@ def patch(cache_request, cache_response):
                         response_chunks.append(decoded)
                     data = b""
             yield chunk
-        if len(data):
-            # must have been an invalid chunk, append it anyway
-            response_chunks.append(data)
-        try:
-            response_body = json.dumps(response_chunks, cls=DataclassesJSONEncoder)
-        except Exception:
-            response_body = str(response_chunks)
-        cache_response(
-            request_id,
-            response_body,
-            response.headers,
-            response.status_code,
-            status_text,
-        )
+        if request_id is not None:
+            # Only happens if the request was successfully cached
+            if len(data):
+                # must have been an invalid chunk, append it anyway
+                response_chunks.append(data)
+            try:
+                response_body = json.dumps(response_chunks, cls=DataclassesJSONEncoder)
+            except Exception:
+                response_body = str(response_chunks)
+            cache_response(
+                request_id,
+                response_body,
+                response.headers,
+                response.status_code,
+                status_text,
+            )
 
     async def _wrap_aiter_bytes(
         response: httpx.Response, chunk_size: Optional[int] = None
     ):
-        request_id = getattr(response, REQUEST_ID_KEY)
+        request_id = getattr(response, REQUEST_ID_KEY, None)
         status_text = response.extensions.get("reason_phrase", None)
         if status_text:
             status_text = status_text.decode("utf-8")
@@ -215,20 +224,21 @@ def patch(cache_request, cache_response):
                         response_chunks.append(decoded)
                     data = b""
             yield chunk
-        if len(data):
-            # must have been an invalid chunk, append it anyway
-            response_chunks.append(data)
-        try:
-            response_body = json.dumps(response_chunks, cls=DataclassesJSONEncoder)
-        except Exception:
-            response_body = str(response_chunks)
-        cache_response(
-            request_id,
-            response_body,
-            response.headers,
-            response.status_code,
-            status_text,
-        )
+        if request_id is not None:
+            if len(data):
+                # must have been an invalid chunk, append it anyway
+                response_chunks.append(data)
+            try:
+                response_body = json.dumps(response_chunks, cls=DataclassesJSONEncoder)
+            except Exception:
+                response_body = str(response_chunks)
+            cache_response(
+                request_id,
+                response_body,
+                response.headers,
+                response.status_code,
+                status_text,
+            )
 
     httpx.HTTPTransport.handle_request = _wrap_handle_request
     httpx.Response.read = _wrap_response_read
