@@ -1,3 +1,11 @@
+# This library is deprecated! 
+
+We started off as an observability product for third-party APIs, and realized that rather than simply pointing out problems with APIs, we need to fix them. As such, we're sunsetting our pure observability product and using it internally for the new "unofficial" APIs we now generate.
+
+Reach out to alex@supergood.ai if you'd like to learn more, or check us out at https://supergood.ai
+
+--
+
 # Python
 
 The Supergood Python client connects Supergood to your Python application. Follow these steps to integrate with the Python client.
